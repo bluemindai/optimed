@@ -195,3 +195,28 @@ def get_image_orientation(img: nib.Nifti1Image) -> Tuple[str, str, str]:
     orientation = aff2axcodes(affine)
 
     return orientation
+
+
+def empty_img(ref: nib.Nifti1Image) -> nib.Nifti1Image:
+    """
+    Create an empty NIfTI image with the same dimensions and affine transformation 
+    as the reference image, filled with zeros.
+
+    Parameters:
+        ref : nib.Nifti1Image
+            The reference NIfTI image from which to derive dimensions and affine.
+
+    Returns:
+        nib.Nifti1Image
+            A new NIfTI image with all voxel values set to zero.
+    """
+
+    empty_data = np.zeros_like(ref.get_fdata())
+    
+    empty_img = nib.Nifti1Image(
+        empty_data.astype(ref.get_data_dtype()), 
+        affine=ref.affine, 
+        header=ref.header
+    )
+
+    return empty_img
