@@ -1,4 +1,4 @@
-import nibabel as nib
+import optimed.wrappers.nifti as nib
 from nibabel.orientations import aff2axcodes, axcodes2ornt, ornt_transform, io_orientation
 import SimpleITK as sitk
 import numpy as np
