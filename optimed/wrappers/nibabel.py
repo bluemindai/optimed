@@ -197,7 +197,7 @@ def get_image_orientation(img: nib.Nifti1Image) -> Tuple[str, str, str]:
     return orientation
 
 
-def empty_img(ref: nib.Nifti1Image) -> nib.Nifti1Image:
+def empty_img_like(ref: nib.Nifti1Image) -> nib.Nifti1Image:
     """
     Create an empty NIfTI image with the same dimensions and affine transformation 
     as the reference image, filled with zeros.
