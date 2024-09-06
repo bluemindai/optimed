@@ -164,3 +164,5 @@ cython_debug/
 .history
 **/.DS_Store
 sandbox.ipynb
+local/
+.venv-optimed/

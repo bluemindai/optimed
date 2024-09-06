@@ -1,4 +1,4 @@
-import optimed.wrappers.nifti as nib
+import nibabel as nib
 from nibabel.orientations import aff2axcodes, axcodes2ornt, ornt_transform, io_orientation
 import SimpleITK as sitk
 import numpy as np
@@ -172,93 +172,168 @@ def undo_canonical(img_can: nib.Nifti1Image, img_orig: nib.Nifti1Image) -> nib.N
     return img_can.as_reoriented(from_canonical)
 
 
-def maybe_convert_nifti_image_in_dtype(img: nib.Nifti1Image, 
-                                        from_dtype: str, 
-                                        to_dtype: str) -> nib.Nifti1Image:
+def maybe_convert_nifti_image_in_dtype(img: object, 
+                                        to_dtype: str, 
+                                        engine: str='nibabel') -> object:
     """
-    Convert a NIfTI image to a specified data type if its current data type matches the source data type.
+    Convert a NIfTI image (from nibabel or SimpleITK) to a specified data type only if its current data type 
+    is different from the target data type.
 
     Parameters:
-        img : nib.Nifti1Image
-            The NIfTI image object to be converted.
-        from_dtype : str
-            The current data type of the image data as a string.
+        img : object
+            The NIfTI image object to be converted. Can be either nibabel.Nifti1Image or SimpleITK.Image.
         to_dtype : str
             The desired data type to convert the image data to.
+        engine : str, optional
+            The engine of the image. Can be 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Raises:
         AssertionError
-            If the provided from_dtype or to_dtype is not valid.
+            If the provided to_dtype is not valid.
+        TypeError
+            If the provided image is not of the expected type.
 
     Returns:
-        nib.Nifti1Image
-            The converted NIfTI image if conversion was performed, or the original image if no conversion was needed.
+        object
+            The converted image if conversion was performed, or the original image if no conversion was needed.
     """
-    
-    # Mapping from string representations to numpy data types
+
     dtype_mapping = {
         'int16': np.int16,
         'int32': np.int32,
         'float16': np.float16,
         'float32': np.float32,
-        'float64': np.float64
+        'float64': np.float64,
+        'uint8': np.uint8
     }
 
-    # Validate input dtypes
-    assert from_dtype in dtype_mapping, f"Invalid from_dtype format. Must be one of {list(dtype_mapping.keys())}"
     assert to_dtype in dtype_mapping, f"Invalid to_dtype format. Must be one of {list(dtype_mapping.keys())}"
 
-    current_dtype = str(img.header.get_data_dtype())
+    if engine == 'nibabel':
+        if not isinstance(img, nib.Nifti1Image):
+            raise TypeError("Expected a nibabel.Nifti1Image for engine 'nibabel'")
 
-    # If the current data type matches the from_dtype, perform conversion
-    if current_dtype == from_dtype:
-        converted_data = img.get_fdata()
-        new_data = converted_data.astype(dtype_mapping[to_dtype])
-        new_img = nib.Nifti1Image(new_data, img.affine, img.header)
+        current_dtype = str(img.header.get_data_dtype())
+        if current_dtype == to_dtype:
+            return img  # No conversion needed
+
+        converted_data = img.get_fdata().astype(dtype_mapping[to_dtype])
+        new_img = nib.Nifti1Image(converted_data, img.affine, img.header)
         new_img.header.set_data_dtype(to_dtype)
-        return new_img 
+        return new_img
+
+    elif engine == 'sitk':
+        if not isinstance(img, sitk.Image):
+            raise TypeError("Expected a SimpleITK.Image for engine 'sitk'")
+
+        sitk_dtype_mapping = {
+            '16-bit signed integer': 'int16',
+            '32-bit signed integer': 'int32',
+            '32-bit float': 'float32',
+            '64-bit float': 'float64',
+            '8-bit unsigned integer': 'uint8'
+        }
+
+        current_dtype = img.GetPixelIDTypeAsString()
+        mapped_current_dtype = sitk_dtype_mapping.get(current_dtype)
+
+        if mapped_current_dtype == to_dtype:
+            return img  # No conversion needed
+
+        converted_data = sitk.GetArrayFromImage(img).astype(dtype_mapping[to_dtype])
+        new_img = sitk.GetImageFromArray(converted_data)
+        new_img.SetOrigin(img.GetOrigin())
+        new_img.SetSpacing(img.GetSpacing())
+        new_img.SetDirection(img.GetDirection())
+        return new_img
 
     return img
 
 
-def get_image_orientation(img: nib.Nifti1Image) -> Tuple[str, str, str]:
+def get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, str, str]:
     """
     Retrieves the orientation of a NIfTI image based on its affine transformation matrix.
+    
+    Works for both nibabel and SimpleITK images.
 
     Parameters:
-    img (nib.Nifti1Image): The NIfTI image from which to extract the orientation.
+    img (object): The NIfTI image from which to extract the orientation. Can be either nibabel.Nifti1Image or SimpleITK.Image.
+    engine (str): The engine used to load the image ('nibabel' or 'sitk').
 
     Returns:
     Tuple[str, str, str]: A tuple representing the orientation of the image 
                            in terms of the axes (e.g., ('R', 'A', 'S')).
     """
 
-    affine = img.affine
+    if engine == 'nibabel':
+        if not isinstance(img, nib.Nifti1Image):
+            raise TypeError("Expected a nibabel.Nifti1Image for engine 'nibabel'")
+
+        affine = img.affine
+
+    elif engine == 'sitk':
+        if not isinstance(img, sitk.Image):
+            raise TypeError("Expected a SimpleITK.Image for engine 'sitk'")
+
+        origin = img.GetOrigin()
+        spacing = img.GetSpacing()
+        direction = img.GetDirection()
+
+        affine = [[direction[0] * spacing[0], direction[3] * spacing[1], direction[6] * spacing[2], origin[0]],
+                  [direction[1] * spacing[0], direction[4] * spacing[1], direction[7] * spacing[2], origin[1]],
+                  [direction[2] * spacing[0], direction[5] * spacing[1], direction[8] * spacing[2], origin[2]],
+                  [0, 0, 0, 1]]
+
+    else:
+        raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
+
     orientation = aff2axcodes(affine)
 
     return orientation
 
 
-def empty_img_like(ref: nib.Nifti1Image) -> nib.Nifti1Image:
+def empty_img_like(ref: object, engine: str = 'nibabel') -> object:
     """
     Create an empty NIfTI image with the same dimensions and affine transformation 
-    as the reference image, filled with zeros.
+    as the reference image, filled with zeros. Supports both nibabel and SimpleITK.
 
     Parameters:
-        ref : nib.Nifti1Image
-            The reference NIfTI image from which to derive dimensions and affine.
+        ref : object
+            The reference NIfTI image (nibabel.Nifti1Image or SimpleITK.Image) 
+            from which to derive dimensions and affine.
+        engine : str
+            The engine used ('nibabel' or 'sitk'). Defaults to 'nibabel'.
 
     Returns:
-        nib.Nifti1Image
+        object
             A new NIfTI image with all voxel values set to zero.
     """
 
-    empty_data = np.zeros_like(ref.get_fdata())
-    
-    empty_img = nib.Nifti1Image(
-        empty_data.astype(ref.get_data_dtype()), 
-        affine=ref.affine, 
-        header=ref.header
-    )
+    if engine == 'nibabel':
+        if not isinstance(ref, nib.Nifti1Image):
+            raise TypeError("Expected a nibabel.Nifti1Image for engine 'nibabel'")
 
-    return empty_img
+        empty_data = np.zeros_like(ref.get_fdata())
+        empty_img = nib.Nifti1Image(
+            empty_data.astype(ref.get_data_dtype()), 
+            affine=ref.affine, 
+            header=ref.header
+        )
+        return empty_img
+
+    elif engine == 'sitk':
+        if not isinstance(ref, sitk.Image):
+            raise TypeError("Expected a SimpleITK.Image for engine 'sitk'")
+
+        empty_data = np.zeros(ref.GetSize()[::-1], dtype=sitk.GetArrayFromImage(ref).dtype)
+        
+        empty_img = sitk.GetImageFromArray(empty_data)
+        
+        empty_img.SetOrigin(ref.GetOrigin())
+        empty_img.SetSpacing(ref.GetSpacing())
+        empty_img.SetDirection(ref.GetDirection())
+        
+        return empty_img
+
+    else:
+        raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
