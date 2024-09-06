@@ -1,7 +1,7 @@
 # Optimed
 ![Optimed](resources/optimed.png)
 
-Senior, it seems you're a senior too!
+Señor, it seems you're a senior too!
 Tired of endlessly writing the same lines of code? Repeating imports over and over? Looking for a way to optimize your project? Congratulations, my friend, you're in the same boat as us! We're also exhausted from the monotonous code—our fingers ache, and our eyes are begging for mercy.
 
 Optimed is made just for you. It will handle all the repetitive tasks, refresh your project, and make it more readable and concise.
