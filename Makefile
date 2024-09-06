@@ -11,6 +11,15 @@ test:
 clean:
 	coverage erase
 	rm -rf htmlcov
+	rm -rf build dist *.egg-info
+
+.PHONY: build
+build: clean
+	python3 -m build
+
+.PHONY: push
+push:
+	python3 -m twine upload dist/*
 
 .PHONY: open-html
 open-html:
