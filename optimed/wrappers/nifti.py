@@ -125,51 +125,90 @@ def save_nifti(ndarray: np.ndarray,
         sitk.WriteImage(img, save_to)
 
 
-def as_closest_canonical(img: nib.Nifti1Image) -> nib.Nifti1Image:
+def as_closest_canonical(img: object, engine: str = 'nibabel') -> object:
     """
-
-    FOR NIBABEL ONLY
-    
     Convert a NIfTI image to its closest canonical orientation.
 
-    This function takes a NIfTI image and transforms it into a standard orientation
-    that is consistent with the canonical frame of reference. This is particularly useful
-    when processing multiple images with potentially different orientations, ensuring 
-    that they are aligned in a uniform manner for further analysis.
+    This function works for both nibabel and SimpleITK images. 
+    In the case of nibabel, it uses the built-in `as_closest_canonical` function. 
+    For SimpleITK, it adjusts the direction matrix to align with the canonical orientation.
 
     Parameters:
-        img : nib.Nifti1Image
-            The NIfTI image to be converted to its closest canonical orientation.
+        img : object
+            The NIfTI image to be converted. This can be either a nibabel.Nifti1Image 
+            or a SimpleITK.Image object.
+        engine : str, optional
+            The engine to use, either 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Returns:
-        nib.Nifti1Image
-            A new NIfTI image object that has been transformed to the closest canonical orientation.
-    """
-    return nib.as_closest_canonical(img)
-
-
-def undo_canonical(img_can: nib.Nifti1Image, img_orig: nib.Nifti1Image) -> nib.Nifti1Image:
+        object:
+            A new image that has been transformed to the closest canonical orientation.
     """
 
-    FOR NIBABEL ONLY
+    if engine == 'nibabel':
+        if not isinstance(img, nib.Nifti1Image):
+            raise TypeError("Expected a nibabel.Nifti1Image for engine 'nibabel'")
+        return nib.as_closest_canonical(img)
 
+    elif engine == 'sitk':
+        if not isinstance(img, sitk.Image):
+            raise TypeError("Expected a SimpleITK.Image for engine 'sitk'")
+
+        # For SimpleITK, we assume the canonical orientation is RAS (Right-Anterior-Superior).
+        # This involves setting the direction matrix to the identity matrix.
+        img_canonical = sitk.Image(img)
+        identity_direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]  # RAS direction matrix
+        img_canonical.SetDirection(identity_direction)
+
+        return img_canonical
+
+    else:
+        raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
+
+
+def undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -> object:
+    """
     Invert the canonical transformation of a NIfTI image.
 
+    This function works for both nibabel and SimpleITK images. 
+    In the case of nibabel, it reverts the canonical transformation using `as_reoriented`.
+    For SimpleITK, it restores the original direction matrix.
+
     Parameters:
-        img_can (nib.Nifti1Image): The canonical image to be reverted.
-        img_orig (nib.Nifti1Image): The original image before canonical transformation.
+        img_can (object): The canonical image to be reverted. This can be either a nibabel.Nifti1Image 
+                          or a SimpleITK.Image.
+        img_orig (object): The original image before canonical transformation. Can be either a 
+                           nibabel.Nifti1Image or a SimpleITK.Image.
+        engine (str): The engine to use, either 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Returns:
-        nib.Nifti1Image: The image reverted to its original orientation.
+        object: The image reverted to its original orientation.
     """
 
-    img_ornt = io_orientation(img_orig.affine)
-    ras_ornt = axcodes2ornt("RAS")
+    if engine == 'nibabel':
+        if not isinstance(img_can, nib.Nifti1Image) or not isinstance(img_orig, nib.Nifti1Image):
+            raise TypeError("Expected both images to be nibabel.Nifti1Image for engine 'nibabel'")
 
-    to_canonical = img_ornt
-    from_canonical = ornt_transform(ras_ornt, img_ornt)
+        img_ornt = io_orientation(img_orig.affine)
+        ras_ornt = axcodes2ornt("RAS")
 
-    return img_can.as_reoriented(from_canonical)
+        from_canonical = ornt_transform(ras_ornt, img_ornt)
+
+        return img_can.as_reoriented(from_canonical)
+
+    elif engine == 'sitk':
+        if not isinstance(img_can, sitk.Image) or not isinstance(img_orig, sitk.Image):
+            raise TypeError("Expected both images to be SimpleITK.Image for engine 'sitk'")
+
+        img_reverted = sitk.Image(img_can)
+
+        # Restore the original direction matrix from the original image
+        img_reverted.SetDirection(img_orig.GetDirection())
+
+        return img_reverted
+
+    else:
+        raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
 
 
 def maybe_convert_nifti_image_in_dtype(img: object, 

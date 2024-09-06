@@ -123,6 +123,14 @@ class TestNiftiFunctions(unittest.TestCase):
         np.testing.assert_array_equal(reverted_img.get_fdata(), img_nib.get_fdata())
         np.testing.assert_array_equal(reverted_img.affine, img_nib.affine)
 
+        ref_img_sitk = sitk.GetImageFromArray(data)
+        ref_img_sitk.SetDirection([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        canonical_img_sitk = as_closest_canonical(ref_img_sitk, engine='sitk')
+        reverted_img_sitk = undo_canonical(canonical_img_sitk, ref_img_sitk, engine='sitk')
+
+        np.testing.assert_array_equal(sitk.GetArrayFromImage(reverted_img_sitk), sitk.GetArrayFromImage(ref_img_sitk))
+        self.assertEqual(reverted_img_sitk.GetDirection(), ref_img_sitk.GetDirection())
+
     def test_invalid_engine(self):
         with self.assertRaises(AssertionError):
             load_nifti("fake_path.nii.gz", engine="invalid_engine")
@@ -131,6 +139,7 @@ class TestNiftiFunctions(unittest.TestCase):
         ref_img = nib.Nifti1Image(data, np.eye(4))
         with self.assertRaises(AssertionError):
             save_nifti(data, ref_img, np.float32, "fake_path.nii.gz", engine="invalid_engine")
+
 
 if __name__ == '__main__':
     unittest.main()
