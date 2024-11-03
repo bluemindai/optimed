@@ -34,7 +34,7 @@ def maybe_remove_dir(directory: str) -> None:
     Returns:
         None
     """
-    if not exists(directory):
+    if exists(directory):
         shutil.rmtree(directory)
 
 
