@@ -11,14 +11,21 @@ Creates the specified directory if it does not already exist. It also creates an
   - `directory` (str): The path of the directory to create.
 - **Returns**: None.
 
-### 2. `maybe_remove_file(file_path: str) -> None`
+### 2. `maybe_remove_dir(directory: str) -> None`
+Removes the specified directory if it exists. If the file does not exist, no action is taken.
+
+- **Parameters**:
+  - `directory` (str): The path of the directory to create.
+- **Returns**: None.
+
+### 3. `maybe_remove_file(file_path: str) -> None`
 Removes the specified file if it exists.
 
 - **Parameters**:
   - `file_path` (str): The path of the file to remove.
 - **Returns**: None.
 
-### 3. `copy_file(src: str, dest: str) -> None`
+### 4. `copy_file(src: str, dest: str) -> None`
 Copies a file from the source path to the destination path.
 
 - **Parameters**:
@@ -26,7 +33,7 @@ Copies a file from the source path to the destination path.
   - `dest` (str): The path where the file should be copied.
 - **Returns**: None.
 
-### 4. `move_file(src: str, dest: str) -> None`
+### 5. `move_file(src: str, dest: str) -> None`
 Moves a file from the source path to the destination path.
 
 - **Parameters**:
@@ -34,7 +41,7 @@ Moves a file from the source path to the destination path.
   - `dest` (str): The path where the file should be moved.
 - **Returns**: None.
 
-### 5. `rename_file(src: str, new_name: str) -> None`
+### 6. `rename_file(src: str, new_name: str) -> None`
 Renames the specified file to the new name.
 
 - **Parameters**:
@@ -42,35 +49,35 @@ Renames the specified file to the new name.
   - `new_name` (str): The new name for the file.
 - **Returns**: None.
 
-### 6. `get_file_size(file_path: str) -> int`
+### 7. `get_file_size(file_path: str) -> int`
 Returns the size of the specified file in bytes.
 
 - **Parameters**:
   - `file_path` (str): The path of the file.
 - **Returns**: Size of the file in bytes.
 
-### 7. `if_file_exists(file_path: str) -> bool`
+### 8. `if_file_exists(file_path: str) -> bool`
 Checks whether the specified file exists.
 
 - **Parameters**:
   - `file_path` (str): The path of the file to check.
 - **Returns**: True if the file exists, False otherwise.
 
-### 8. `if_directory_exists(directory: str) -> bool`
+### 9. `if_directory_exists(directory: str) -> bool`
 Checks whether the specified directory exists.
 
 - **Parameters**:
   - `directory` (str): The path of the directory to check.
 - **Returns**: True if the directory exists, False otherwise.
 
-### 9. `read_file(file_path: str) -> str`
+### 10. `read_file(file_path: str) -> str`
 Reads the contents of the specified file and returns it as a string.
 
 - **Parameters**:
   - `file_path` (str): The path of the file to be read.
 - **Returns**: Contents of the file.
 
-### 10. `write_to_file(content: str, file_path: str) -> None`
+### 11. `write_to_file(content: str, file_path: str) -> None`
 Writes the specified content to a file. Overwrites the file if it already exists.
 
 - **Parameters**:
@@ -78,7 +85,7 @@ Writes the specified content to a file. Overwrites the file if it already exists
   - `file_path` (str): The path of the file.
 - **Returns**: None.
 
-### 11. `append_to_file(content: str, file_path: str) -> None`
+### 12. `append_to_file(content: str, file_path: str) -> None`
 Appends the specified content to a file. Creates the file if it does not exist.
 
 - **Parameters**:
@@ -86,49 +93,49 @@ Appends the specified content to a file. Creates the file if it does not exist.
   - `file_path` (str): The path of the file.
 - **Returns**: None.
 
-### 12. `get_file_extension(file_path: str) -> str`
+### 13. `get_file_extension(file_path: str) -> str`
 Returns the file extension of the specified file.
 
 - **Parameters**:
   - `file_path` (str): The path of the file.
 - **Returns**: The file extension, including the dot (e.g., '.txt').
 
-### 13. `get_absolute_path(path: str) -> str`
+### 14. `get_absolute_path(path: str) -> str`
 Returns the absolute path of the specified file or directory.
 
 - **Parameters**:
   - `path` (str): The relative or absolute path.
 - **Returns**: The absolute path.
 
-### 14. `count_files(directory: str) -> int`
+### 15. `count_files(directory: str) -> int`
 Counts the number of files in the specified directory.
 
 - **Parameters**:
   - `directory` (str): The path of the directory to count files in.
 - **Returns**: The number of files in the directory.
 
-### 15. `list_dir(directory: str) -> list`
+### 16. `list_dir(directory: str) -> list`
 Lists the contents of the specified directory.
 
 - **Parameters**:
   - `directory` (str): The path of the directory.
 - **Returns**: A list of the names of the entries in the directory.
 
-### 16. `list_subdirs(directory: str) -> list`
+### 17. `list_subdirs(directory: str) -> list`
 Lists all subdirectories within the specified directory.
 
 - **Parameters**:
   - `directory` (str): The path of the directory.
 - **Returns**: A list of the names of the subdirectories.
 
-### 17. `load_json(file: str)`
+### 18. `load_json(file: str)`
 Loads and returns the contents of a JSON file as a Python object.
 
 - **Parameters**:
   - `file` (str): The path of the JSON file to load.
 - **Returns**: The parsed contents of the JSON file.
 
-### 18. `save_json(obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=None) -> None`
+### 19. `save_json(obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=None) -> None`
 Saves a Python object to a JSON file with optional custom formatting and encoding.
 
 - **Parameters**:

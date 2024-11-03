@@ -24,6 +24,20 @@ def maybe_mkdir(directory: str) -> None:
     os.makedirs(directory, exist_ok=True)
 
 
+def maybe_remove_dir(directory: str) -> None:
+    """
+    Removes the specified directory if it exists. If the file does not exist, no action is taken.
+
+    Parameters:
+        directory (str): The path of the directory to create.
+
+    Returns:
+        None
+    """
+    if not exists(directory):
+        shutil.rmtree(directory)
+
+
 def maybe_remove_file(file_path: str) -> None:
     """
     Removes the specified file if it exists. If the file does not exist, no action is taken.
@@ -241,7 +255,7 @@ def load_json(file: str):
     Returns:
         The parsed contents of the JSON file, typically a dictionary or a list.
     """
-    with open(file, 'r') as f:
+    with open(file, 'r', encoding='utf8') as f:
         a = json.load(f)
     return a
 

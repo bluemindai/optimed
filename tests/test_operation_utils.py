@@ -21,6 +21,12 @@ class TestFileOperations(unittest.TestCase):
         maybe_mkdir(dir_path)
         self.assertTrue(os.path.isdir(dir_path))
 
+    def test_maybe_remove_dir(self):
+        dir_to_remove = join(str(self.test_dir), 'test', 'dir', 'remove')
+        os.makedirs(dir_to_remove)
+        maybe_remove_dir(dir_to_remove)
+        self.assertTrue(~os.path.exists(dir_to_remove))
+
     def test_maybe_remove_file(self):
         write_to_file(self.test_content, self.test_file)
         self.assertTrue(os.path.isfile(self.test_file))
