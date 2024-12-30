@@ -125,6 +125,83 @@ def save_nifti(ndarray: np.ndarray,
         sitk.WriteImage(img, save_to)
 
 
+def sitk_to_nibabel(img_sitk: sitk.Image) -> nib.Nifti1Image:
+    """
+    Converts a SimpleITK.Image to a nibabel.Nifti1Image, correctly forming the affine matrix.
+    """
+    data = sitk.GetArrayFromImage(img_sitk)  # shape: [D, H, W]
+
+    # Extract parameters from SimpleITK
+    origin = img_sitk.GetOrigin()      # (Ox, Oy, Oz)
+    spacing = img_sitk.GetSpacing()    # (Sx, Sy, Sz)
+    direction = img_sitk.GetDirection()  # length 9 (3x3)
+
+    # Create the affine matrix:
+    # direction = [d00, d01, d02, d10, d11, d12, d20, d21, d22]
+    # We need a 4x4 matrix:
+    # [ d00*Sx, d01*Sy, d02*Sz, Ox ]
+    # [ d10*Sx, d11*Sy, d12*Sz, Oy ]
+    # [ d20*Sx, d21*Sy, d22*Sz, Oz ]
+    # [   0,      0,      0,    1 ]
+    affine = np.array([
+        [direction[0] * spacing[0], direction[3] * spacing[1], direction[6] * spacing[2], origin[0]],
+        [direction[1] * spacing[0], direction[4] * spacing[1], direction[7] * spacing[2], origin[1]],
+        [direction[2] * spacing[0], direction[5] * spacing[1], direction[8] * spacing[2], origin[2]],
+        [0,                        0,                        0,                        1]
+    ], dtype=np.float64)
+
+    img_nib = nib.Nifti1Image(data, affine)
+    return img_nib
+
+
+def nibabel_to_sitk(img_nib: nib.Nifti1Image) -> sitk.Image:
+    """
+    Converts a nibabel.Nifti1Image to a SimpleITK.Image, restoring origin, spacing, and direction.
+    """
+    data = img_nib.get_fdata(dtype=np.float32)
+    affine = img_nib.affine
+
+    # Extract spacing, direction, and origin from the affine matrix:
+    origin = affine[:3, 3]
+
+    # Extract direction vectors
+    dxx, dxy, dxz = affine[0, 0], affine[0, 1], affine[0, 2]
+    dyx, dyy, dyz = affine[1, 0], affine[1, 1], affine[1, 2]
+    dzx, dzy, dzz = affine[2, 0], affine[2, 1], affine[2, 2]
+
+    # Calculate spacing as the magnitude of the vectors
+    sx = np.sqrt(dxx**2 + dyx**2 + dzx**2)
+    sy = np.sqrt(dxy**2 + dyy**2 + dzy**2)
+    sz = np.sqrt(dxz**2 + dyz**2 + dzz**2)
+
+    spacing = (sx, sy, sz)
+
+    # Normalize direction vectors
+    if sx != 0:
+        dxx /= sx
+        dyx /= sx
+        dzx /= sx
+    if sy != 0:
+        dxy /= sy
+        dyy /= sy
+        dzy /= sy
+    if sz != 0:
+        dxz /= sz
+        dyz /= sz
+        dzz /= sz
+
+    direction = [dxx, dxy, dxz,
+                 dyx, dyy, dyz,
+                 dzx, dzy, dzz]
+
+    img_sitk = sitk.GetImageFromArray(data)  # SimpleITK always uses [z, y, x]
+    img_sitk.SetOrigin(origin)
+    img_sitk.SetSpacing(spacing)
+    img_sitk.SetDirection(direction)
+
+    return img_sitk
+
+
 def as_closest_canonical(img: object, engine: str = 'nibabel') -> object:
     """
     Convert a NIfTI image to its closest canonical orientation.
@@ -329,6 +406,58 @@ def get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, st
     orientation = aff2axcodes(affine)
 
     return orientation
+
+
+def change_image_orientation(img: object, target_orientation: str = "RAS", engine: str = "nibabel") -> object:
+    """
+    Reorients a NIfTI image to a specified orientation (e.g., 'RAS', 'LPS', 'LAS').
+
+    Parameters:
+    img : object
+        Image in the format of nibabel.Nifti1Image or SimpleITK.Image.
+    target_orientation : str
+        Target three-letter orientation code (e.g., 'RAS', 'LPS', 'LAS').
+    engine : str
+        'nibabel' or 'sitk'. Specifies how the image was loaded.
+    
+    Returns:
+    object:
+        The reoriented image (same type as the input image).
+    """
+    if engine == "nibabel":
+        if not isinstance(img, nib.Nifti1Image):
+            raise TypeError("For engine='nibabel', the input must be a nibabel.Nifti1Image.")
+
+        # Current orientation
+        current_ornt = io_orientation(img.affine)
+        # Target orientation in ornt format
+        desired_ornt = axcodes2ornt(target_orientation)
+        # Transformation matrix
+        transform = ornt_transform(current_ornt, desired_ornt)
+        # Apply transformation
+        reoriented_img = img.as_reoriented(transform)
+
+        return reoriented_img
+
+    elif engine == "sitk":
+        if not isinstance(img, sitk.Image):
+            raise TypeError("For engine='sitk', the input must be a SimpleITK.Image.")
+
+        # 1) Convert SimpleITK.Image -> nibabel.Nifti1Image
+        img_nib = sitk_to_nibabel(img)
+
+        # 2) Reorient using nibabel
+        current_ornt = io_orientation(img_nib.affine)
+        desired_ornt = axcodes2ornt(target_orientation)
+        transform = ornt_transform(current_ornt, desired_ornt)
+        img_nib_reoriented = img_nib.as_reoriented(transform)
+
+        # 3) Convert the result back to SimpleITK.Image
+        img_sitk_reoriented = nibabel_to_sitk(img_nib_reoriented)
+        return img_sitk_reoriented
+
+    else:
+        raise ValueError("Supported engines are 'nibabel' and 'sitk'.")
 
 
 def empty_img_like(ref: object, engine: str = 'nibabel') -> object:

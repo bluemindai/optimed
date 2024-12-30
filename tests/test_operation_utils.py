@@ -1,7 +1,7 @@
 import unittest
 import os
 import json
-import shutil
+import yaml
 from tempfile import TemporaryDirectory
 from optimed.wrappers.operations import *
 
@@ -11,6 +11,7 @@ class TestFileOperations(unittest.TestCase):
         self.test_dir = TemporaryDirectory()
         self.test_file = os.path.join(self.test_dir.name, "test_file.txt")
         self.test_json_file = os.path.join(self.test_dir.name, "test_file.json")
+        self.test_yaml_file = os.path.join(self.test_dir.name, "test_file.yaml")
         self.test_content = "Hello, World!"
 
     def tearDown(self):
@@ -126,6 +127,19 @@ class TestFileOperations(unittest.TestCase):
             loaded_data = json.load(f)
         self.assertEqual(loaded_data, data)
 
+    def test_load_yaml(self):
+        data = {"key": "value"}
+        save_yaml(data, self.test_yaml_file)
+        loaded_data = load_yaml(self.test_yaml_file)
+        self.assertEqual(loaded_data, data)
+
+    def test_save_yaml(self):
+        data = {"key": "value"}
+        save_yaml(data, self.test_yaml_file)
+        self.assertTrue(os.path.isfile(self.test_yaml_file))
+        with open(self.test_yaml_file, 'r') as f:
+            loaded_data = yaml.safe_load(f)
+        self.assertEqual(loaded_data, data)
 
 if __name__ == "__main__":
     unittest.main()

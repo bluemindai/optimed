@@ -1,4 +1,5 @@
 import json
+import yaml
 import shutil
 import os
 
@@ -284,3 +285,43 @@ def save_json(obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=N
     """
     with open(file, 'w', encoding='utf8') as f:
         json.dump(obj, f, indent=indent, ensure_ascii=ensure_ascii, cls=cls)
+
+
+def load_yaml(file: str):
+    """
+    Loads and returns the contents of a YAML file.
+
+    This function reads the specified YAML file, parses its contents, and returns the resulting 
+    Python object (usually a dictionary or a list).
+
+    Parameters:
+        file (str): The path to the YAML file to be loaded.
+
+    Returns:
+        The parsed contents of the YAML file, typically a dictionary or a list.
+    """
+    with open(file, 'r', encoding='utf8') as f:
+        data = yaml.safe_load(f)
+    return data
+
+
+def save_yaml(obj, file: str, default_flow_style: bool = False, indent: int = 2) -> None:
+    """
+    Saves a Python object to a YAML file.
+
+    This function serializes the given Python object (usually a dictionary or a list) 
+    into a YAML formatted string and writes it to the specified file.
+
+    Parameters:
+        obj: The Python object to be serialized and saved to a YAML file.
+        file (str): The path to the file where the YAML data will be saved.
+        default_flow_style (bool, optional): If True, the YAML will use the block style. 
+                                             Defaults to False for a more human-readable format.
+        indent (int, optional): The number of spaces to use as indentation in the YAML file. 
+                                Defaults to 2.
+
+    Returns:
+        None
+    """
+    with open(file, 'w', encoding='utf8') as f:
+        yaml.dump(obj, f, default_flow_style=default_flow_style, indent=indent)
