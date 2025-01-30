@@ -2,6 +2,8 @@ import unittest
 import os
 import json
 import yaml
+import shutil
+import sys
 from tempfile import TemporaryDirectory
 from optimed.wrappers.operations import *
 

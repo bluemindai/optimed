@@ -2,7 +2,9 @@ import json
 import yaml
 import shutil
 import os
-
+import importlib
+import pkgutil
+from typing import List
 
 join = os.path.join
 isdir = os.path.isdir
@@ -325,3 +327,66 @@ def save_yaml(obj, file: str, default_flow_style: bool = False, indent: int = 2)
     """
     with open(file, 'w', encoding='utf8') as f:
         yaml.dump(obj, f, default_flow_style=default_flow_style, indent=indent)
+
+
+def recursively_find_file(filename: str, start_path: str = ".") -> List[str]:
+    """
+    Recursively search for files named `filename` starting from `start_path`.
+
+    Parameters
+        filename : str
+            Name of the file to look for (e.g. "myfile.txt").
+        start_path : str, optional
+            The directory path in which to begin the search.
+            Defaults to the current directory ".".
+
+    Returns
+        List[str]
+            A list of full paths to files that match the given filename.
+            Returns an empty list if no matches are found.
+    """
+    matches = []
+    for root, dirs, files in os.walk(start_path):
+        if filename in files:
+            full_path = os.path.join(root, filename)
+            matches.append(full_path)
+    return matches
+
+
+def recursive_find_python_class(folder: str, class_name: str, current_module: str) -> object:
+    """
+    Recursively searches for a Python class within a given folder and its subfolders.
+
+    This function searches for a specified class name within Python modules located in the given folder.
+    It will recursively traverse subdirectories to find the class.
+
+    Parameters:
+        folder (str): The path of the folder to start the search in.
+        class_name (str): The name of the class to search for.
+        current_module (str): The current module path to use for importing.
+
+    Returns:
+        object: The class object if found, otherwise None.
+    """
+    tr = None
+    for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+        if not ispkg:
+            m = importlib.import_module(
+                current_module + "." + modname
+            )
+            if hasattr(m, class_name):
+                tr = getattr(m, class_name)
+                break
+
+    if tr is None:
+        for importer, modname, ispkg in pkgutil.iter_modules([folder]):
+            if ispkg:
+                next_current_module = current_module + "." + modname
+                tr = recursive_find_python_class(
+                    join(folder, modname),
+                    class_name,
+                    current_module=next_current_module
+                )
+            if tr is not None:
+                break
+    return tr
