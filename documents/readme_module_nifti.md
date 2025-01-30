@@ -86,6 +86,21 @@ Creates an empty NIfTI image with the same dimensions and affine transformation 
 - **Returns**: A new empty image with the same shape and metadata as the reference.
 
 ---
+### 8. `split_image(img: object, parts: int, axis: int = 0) -> List[object]`
+Splits a NIfTI image (nibabel or SimpleITK) into multiple parts along the specified axis.
+
+- **Parameters**:
+  - `img`: The NIfTI/ITK image to be split.
+  - `parts`: The number of parts to split the image into.
+  - `axis`: The axis along which to split. Default is 0 (the first axis).
+    - For nibabel, axis=0 often corresponds to the x-dimension in 3D data.
+    - For SimpleITK, axis=0 often corresponds to the z-dimension in 3D data.
+
+- **Returns**: A list of sub-images, each representing a part of the original image.
+  - If the input image is nibabel, the list contains nib.Nifti1Image objects.
+  - If the input image is SimpleITK, the list contains sitk.Image objects.
+
+---
 
 ## Example Usage
 

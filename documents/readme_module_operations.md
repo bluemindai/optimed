@@ -15,7 +15,7 @@ Creates the specified directory if it does not already exist. It also creates an
 Removes the specified directory if it exists. If the file does not exist, no action is taken.
 
 - **Parameters**:
-  - `directory` (str): The path of the directory to create.
+  - `directory` (str): The path of the directory to remove.
 - **Returns**: None.
 
 ### 3. `maybe_remove_file(file_path: str) -> None`
@@ -144,6 +144,23 @@ Saves a Python object to a JSON file with optional custom formatting and encodin
   - `indent` (int, optional): Number of spaces to use for indentation.
   - `ensure_ascii` (bool, optional): Whether to escape non-ASCII characters.
   - `cls` (optional): A custom encoder class for non-serializable objects.
+- **Returns**: None.
+
+### 20. `load_yaml(file: str)`
+Loads and returns the contents of a YAML file as a Python object.
+
+- **Parameters**:
+  - `file` (str): The path of the YAML file to load.
+- **Returns**: The parsed contents of the YAML file.
+
+### 21. `save_yaml(obj, file: str, default_flow_style: bool = False, indent: int = 2) -> None`
+Saves a Python object to a YAML file.
+
+- **Parameters**:
+  - `obj`: The Python object to serialize and save.
+  - `file` (str): The path to the YAML file.
+  - `default_flow_style` (bool, optional): Whether to use block style. Defaults to False.
+  - `indent` (int, optional): Number of spaces to use for indentation. Defaults to 2.
 - **Returns**: None.
 
 ## Usage Examples
