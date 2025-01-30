@@ -45,7 +45,7 @@ class TestNiftiFunctions(unittest.TestCase):
         ref_img = nib.Nifti1Image(data, affine)
         
         save_path = os.path.join(self.test_dir.name, 'saved_nibabel.nii.gz')
-        save_nifti(data, ref_img, np.float32, save_path, engine='nibabel')
+        save_nifti(ndarray=data, ref_image=ref_img, dtype=np.float32, save_to=save_path, engine='nibabel')
 
         loaded_img = nib.load(save_path)
         np.testing.assert_array_equal(loaded_img.get_fdata(), data)
@@ -56,7 +56,7 @@ class TestNiftiFunctions(unittest.TestCase):
         ref_img = sitk.GetImageFromArray(data)
 
         save_path = os.path.join(self.test_dir.name, 'saved_sitk.nii.gz')
-        save_nifti(data, ref_img, np.float32, save_path, engine='sitk')
+        save_nifti(ndarray=data, ref_image=ref_img, dtype=np.float32, save_to=save_path, engine='sitk')
 
         loaded_img = sitk.ReadImage(save_path)
         np.testing.assert_array_equal(sitk.GetArrayFromImage(loaded_img), data)
@@ -66,13 +66,13 @@ class TestNiftiFunctions(unittest.TestCase):
         
         ref_img_nib = nib.Nifti1Image(data, np.eye(4))
         save_path_nib = os.path.join(self.test_dir.name, 'saved_nibabel_uint8.nii.gz')
-        save_nifti(data, ref_img_nib, np.uint8, save_path_nib, engine='nibabel')
+        save_nifti(ndarray=data, ref_image=ref_img_nib, dtype=np.uint8, save_to=save_path_nib, engine='nibabel')
         loaded_img_nib = nib.load(save_path_nib)
         np.testing.assert_array_equal(loaded_img_nib.get_fdata(), data)
 
         ref_img_sitk = sitk.GetImageFromArray(data)
         save_path_sitk = os.path.join(self.test_dir.name, 'saved_sitk_uint8.nii.gz')
-        save_nifti(data, ref_img_sitk, np.uint8, save_path_sitk, engine='sitk')
+        save_nifti(ndarray=data, ref_image=ref_img_sitk, dtype=np.uint8, save_to=save_path_sitk, engine='sitk')
         loaded_img_sitk = sitk.ReadImage(save_path_sitk)
         np.testing.assert_array_equal(sitk.GetArrayFromImage(loaded_img_sitk), data)
 
