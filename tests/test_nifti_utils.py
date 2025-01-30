@@ -140,6 +140,35 @@ class TestNiftiFunctions(unittest.TestCase):
         with self.assertRaises(AssertionError):
             save_nifti(data, ref_img, np.float32, "fake_path.nii.gz", engine="invalid_engine")
 
+    def test_split_image_nibabel(self):
+        data = np.random.rand(10, 10, 10).astype(np.float32)
+        affine = np.eye(4)
+        img = nib.Nifti1Image(data, affine)
+        
+        parts = 2
+        split_imgs = split_image(img, parts, axis=0)
+        
+        self.assertEqual(len(split_imgs), parts)
+        for i, split_img in enumerate(split_imgs):
+            self.assertIsInstance(split_img, nib.Nifti1Image)
+            expected_shape = list(data.shape)
+            expected_shape[0] = expected_shape[0] // parts
+            self.assertEqual(split_img.shape, tuple(expected_shape))
+
+    def test_split_image_sitk(self):
+        data = np.random.rand(10, 10, 10).astype(np.float32)
+        img = sitk.GetImageFromArray(data)
+        
+        parts = 2
+        split_imgs = split_image(img, parts, axis=0)
+        
+        self.assertEqual(len(split_imgs), parts)
+        for i, split_img in enumerate(split_imgs):
+            self.assertIsInstance(split_img, sitk.Image)
+            expected_shape = list(data.shape)
+            expected_shape[0] = expected_shape[0] // parts
+            self.assertEqual(sitk.GetArrayFromImage(split_img).shape, tuple(expected_shape))
+
 
 if __name__ == '__main__':
     unittest.main()

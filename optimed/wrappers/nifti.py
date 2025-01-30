@@ -4,11 +4,11 @@ import SimpleITK as sitk
 import numpy as np
 import os
 
-from typing import Tuple
+from typing import Tuple, Union, List
 import warnings
 
 
-def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> object:
+def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Load a NIfTI image from a specified file using either nibabel or SimpleITK.
 
@@ -31,7 +31,7 @@ def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> objec
             or if an invalid engine is specified.
         
     Returns:
-        nib.Nifti1Image or sitk.Image
+        Union[nib.Nifti1Image, sitk.Image]
             A NIfTI image object loaded from the specified file using the selected engine.
     """
 
@@ -52,7 +52,7 @@ def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> objec
 
 
 def save_nifti(ndarray: np.ndarray, 
-               ref_image: object, 
+               ref_image: Union[nib.Nifti1Image, sitk.Image], 
                dtype: np.dtype, 
                save_to: str,
                engine: str='nibabel') -> None:
@@ -62,7 +62,7 @@ def save_nifti(ndarray: np.ndarray,
     Parameters:
         ndarray : np.ndarray
             A numpy array representing the image data to be saved.
-        ref_image : object
+        ref_image : Union[nib.Nifti1Image, sitk.Image]
             A reference image object from which to extract metadata. This can be either a nibabel.Nifti1Image 
             or a SimpleITK.Image.
         dtype : np.dtype
@@ -202,7 +202,7 @@ def nibabel_to_sitk(img_nib: nib.Nifti1Image) -> sitk.Image:
     return img_sitk
 
 
-def as_closest_canonical(img: object, engine: str = 'nibabel') -> object:
+def as_closest_canonical(img: Union[nib.Nifti1Image, sitk.Image], engine: str = 'nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Convert a NIfTI image to its closest canonical orientation.
 
@@ -211,14 +211,14 @@ def as_closest_canonical(img: object, engine: str = 'nibabel') -> object:
     For SimpleITK, it adjusts the direction matrix to align with the canonical orientation.
 
     Parameters:
-        img : object
+        img : Union[nib.Nifti1Image, sitk.Image]
             The NIfTI image to be converted. This can be either a nibabel.Nifti1Image 
             or a SimpleITK.Image object.
         engine : str, optional
             The engine to use, either 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Returns:
-        object:
+        Union[nib.Nifti1Image, sitk.Image]
             A new image that has been transformed to the closest canonical orientation.
     """
 
@@ -243,7 +243,7 @@ def as_closest_canonical(img: object, engine: str = 'nibabel') -> object:
         raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
 
 
-def undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -> object:
+def undo_canonical(img_can: Union[nib.Nifti1Image, sitk.Image], img_orig: Union[nib.Nifti1Image, sitk.Image], engine: str = 'nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Invert the canonical transformation of a NIfTI image.
 
@@ -252,14 +252,18 @@ def undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -
     For SimpleITK, it restores the original direction matrix.
 
     Parameters:
-        img_can (object): The canonical image to be reverted. This can be either a nibabel.Nifti1Image 
-                          or a SimpleITK.Image.
-        img_orig (object): The original image before canonical transformation. Can be either a 
-                           nibabel.Nifti1Image or a SimpleITK.Image.
-        engine (str): The engine to use, either 'nibabel' or 'sitk'. Defaults to 'nibabel'.
+        img_can : Union[nib.Nifti1Image, sitk.Image]
+            The canonical image to be reverted. This can be either a nibabel.Nifti1Image 
+            or a SimpleITK.Image.
+        img_orig : Union[nib.Nifti1Image, sitk.Image]
+            The original image before canonical transformation. Can be either a 
+            nibabel.Nifti1Image or a SimpleITK.Image.
+        engine : str
+            The engine to use, either 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Returns:
-        object: The image reverted to its original orientation.
+        Union[nib.Nifti1Image, sitk.Image]
+            The image reverted to its original orientation.
     """
 
     if engine == 'nibabel':
@@ -288,15 +292,15 @@ def undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -
         raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
 
 
-def maybe_convert_nifti_image_in_dtype(img: object, 
-                                        to_dtype: str, 
-                                        engine: str='nibabel') -> object:
+def maybe_convert_nifti_image_in_dtype(img: Union[nib.Nifti1Image, sitk.Image], 
+                                       to_dtype: str, 
+                                       engine: str='nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Convert a NIfTI image (from nibabel or SimpleITK) to a specified data type only if its current data type 
     is different from the target data type.
 
     Parameters:
-        img : object
+        img : Union[nib.Nifti1Image, sitk.Image]
             The NIfTI image object to be converted. Can be either nibabel.Nifti1Image or SimpleITK.Image.
         to_dtype : str
             The desired data type to convert the image data to.
@@ -310,7 +314,7 @@ def maybe_convert_nifti_image_in_dtype(img: object,
             If the provided image is not of the expected type.
 
     Returns:
-        object
+        Union[nib.Nifti1Image, sitk.Image]
             The converted image if conversion was performed, or the original image if no conversion was needed.
     """
 
@@ -366,19 +370,22 @@ def maybe_convert_nifti_image_in_dtype(img: object,
     return img
 
 
-def get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, str, str]:
+def get_image_orientation(img: Union[nib.Nifti1Image, sitk.Image], engine: str = 'nibabel') -> Tuple[str, str, str]:
     """
     Retrieves the orientation of a NIfTI image based on its affine transformation matrix.
     
     Works for both nibabel and SimpleITK images.
 
     Parameters:
-    img (object): The NIfTI image from which to extract the orientation. Can be either nibabel.Nifti1Image or SimpleITK.Image.
-    engine (str): The engine used to load the image ('nibabel' or 'sitk').
+        img : Union[nib.Nifti1Image, sitk.Image]
+            The NIfTI image from which to extract the orientation. Can be either nibabel.Nifti1Image or SimpleITK.Image.
+        engine : str
+            The engine used to load the image ('nibabel' or 'sitk').
 
     Returns:
-    Tuple[str, str, str]: A tuple representing the orientation of the image 
-                           in terms of the axes (e.g., ('R', 'A', 'S')).
+        Tuple[str, str, str]
+            A tuple representing the orientation of the image 
+            in terms of the axes (e.g., ('R', 'A', 'S')).
     """
 
     if engine == 'nibabel':
@@ -408,21 +415,21 @@ def get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, st
     return orientation
 
 
-def change_image_orientation(img: object, target_orientation: str = "RAS", engine: str = "nibabel") -> object:
+def change_image_orientation(img: Union[nib.Nifti1Image, sitk.Image], target_orientation: str = "RAS", engine: str = "nibabel") -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Reorients a NIfTI image to a specified orientation (e.g., 'RAS', 'LPS', 'LAS').
 
     Parameters:
-    img : object
-        Image in the format of nibabel.Nifti1Image or SimpleITK.Image.
-    target_orientation : str
-        Target three-letter orientation code (e.g., 'RAS', 'LPS', 'LAS').
-    engine : str
-        'nibabel' or 'sitk'. Specifies how the image was loaded.
+        img : Union[nib.Nifti1Image, sitk.Image]
+            Image in the format of nibabel.Nifti1Image or SimpleITK.Image.
+        target_orientation : str
+            Target three-letter orientation code (e.g., 'RAS', 'LPS', 'LAS').
+        engine : str
+            'nibabel' or 'sitk'. Specifies how the image was loaded.
     
     Returns:
-    object:
-        The reoriented image (same type as the input image).
+        Union[nib.Nifti1Image, sitk.Image]
+            The reoriented image (same type as the input image).
     """
     if engine == "nibabel":
         if not isinstance(img, nib.Nifti1Image):
@@ -460,20 +467,20 @@ def change_image_orientation(img: object, target_orientation: str = "RAS", engin
         raise ValueError("Supported engines are 'nibabel' and 'sitk'.")
 
 
-def empty_img_like(ref: object, engine: str = 'nibabel') -> object:
+def empty_img_like(ref: Union[nib.Nifti1Image, sitk.Image], engine: str = 'nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Create an empty NIfTI image with the same dimensions and affine transformation 
     as the reference image, filled with zeros. Supports both nibabel and SimpleITK.
 
     Parameters:
-        ref : object
+        ref : Union[nib.Nifti1Image, sitk.Image]
             The reference NIfTI image (nibabel.Nifti1Image or SimpleITK.Image) 
             from which to derive dimensions and affine.
         engine : str
             The engine used ('nibabel' or 'sitk'). Defaults to 'nibabel'.
 
     Returns:
-        object
+        Union[nib.Nifti1Image, sitk.Image]
             A new NIfTI image with all voxel values set to zero.
     """
 
@@ -505,3 +512,135 @@ def empty_img_like(ref: object, engine: str = 'nibabel') -> object:
 
     else:
         raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
+
+
+def split_image(
+    img: Union[nib.Nifti1Image, sitk.Image], 
+    parts: int, 
+    axis: int = 0,
+) -> List[Union[nib.Nifti1Image, sitk.Image]]:
+    """
+    Split an image (nibabel or SimpleITK) into multiple parts along a specified axis.
+
+    Parameters
+    ----------
+    img : Union[nib.Nifti1Image, sitk.Image]
+        The NIfTI/ITK image to be split.
+    parts : int
+        Number of parts to split the image into.
+    axis : int, optional
+        The axis along which to split. Default is 0 (the first dimension).
+        - For nibabel, axis=0 often corresponds to the x-dimension in 3D data.
+        - For SimpleITK, axis=0 often corresponds to the z-dimension in 3D data.
+
+    Returns
+    -------
+    List[Union[nib.Nifti1Image, sitk.Image]]
+        A list of sub-images, each representing part of the original image.
+        - If the input is nibabel, the output list contains nib.Nifti1Image objects.
+        - If the input is SimpleITK, the output list contains sitk.Image objects.
+    """
+    if parts <= 0:
+        raise ValueError("Number of parts must be greater than 0.")
+
+    # --- Nibabel
+    if isinstance(img, nib.Nifti1Image):
+        # Preserve original dtype instead of forcing float64
+        data = np.asanyarray(img.dataobj)
+        shape = data.shape
+
+        if axis < 0 or axis >= len(shape):
+            raise ValueError(f"Axis {axis} is out of range for data shape {shape}.")
+
+        axis_length = shape[axis]
+        # Calculate boundaries (e.g. if axis_length=10 and parts=3 => [0,3,6,10])
+        boundaries = np.linspace(0, axis_length, parts + 1, dtype=int)
+
+        orig_affine = img.affine.copy()
+        # For convenience, separate rotation/shear from translation
+        R = orig_affine[:3, :3]
+        t_orig = orig_affine[:3, 3]
+
+        sub_images = []
+        for i in range(parts):
+            start_idx = boundaries[i]
+            end_idx   = boundaries[i+1]
+
+            # Build a slice object to split along `axis`
+            # e.g. if axis=0, we slice [start_idx:end_idx, :, :, ...]
+            slice_obj = [slice(None)] * len(shape)
+            slice_obj[axis] = slice(start_idx, end_idx)
+            slice_obj = tuple(slice_obj)
+
+            sub_data = data[slice_obj]
+
+            new_affine = orig_affine.copy()
+            
+            # offset_vec: how many voxels we moved along 'axis'
+            offset_vec = np.zeros(3)
+            # If axis < 3, we can apply an offset in real space
+            # (for 4D images, axis=3 might be time, which doesn't affect spatial offset)
+            if axis < 3:
+                offset_vec[axis] = start_idx
+                delta_t = R @ offset_vec
+                new_affine[:3, 3] = t_orig + delta_t
+
+            new_header = img.header.copy()
+            new_header.set_data_shape(sub_data.shape)
+            sub_img = nib.Nifti1Image(sub_data, affine=new_affine, header=new_header)
+            sub_images.append(sub_img)
+
+        return sub_images
+
+    # --- SimpleITK
+    elif isinstance(img, sitk.Image):
+        # SITK array is typically in [z, y, x] order for a 3D image,
+        # so axis=0 = z, axis=1 = y, axis=2 = x (by default).
+        data = sitk.GetArrayFromImage(img)
+        shape = data.shape
+        if axis < 0 or axis >= len(shape):
+            raise ValueError(f"Axis {axis} is out of range for data shape {shape}.")
+
+        axis_length = shape[axis]
+        boundaries = np.linspace(0, axis_length, parts + 1, dtype=int)
+
+        origin = np.array(img.GetOrigin())        # (Ox, Oy, Oz) in 3D
+        spacing = np.array(img.GetSpacing())      # (Sz, Sy, Sx) in 3D
+        direction = np.array(img.GetDirection())  # flattened direction cosines
+        dim = img.GetDimension()
+
+        # direction matrix: e.g., if 3D => reshape to (3,3)
+        dir_mat = direction.reshape(dim, dim)
+
+        sub_images = []
+        for i in range(parts):
+            start_idx = boundaries[i]
+            end_idx   = boundaries[i+1]
+
+            slice_obj = [slice(None)] * len(shape)
+            slice_obj[axis] = slice(start_idx, end_idx)
+            slice_obj = tuple(slice_obj)
+
+            sub_data = data[slice_obj]
+
+            sub_img = sitk.GetImageFromArray(sub_data)
+
+
+            # The offset in voxel space along `axis` is `start_idx`
+            # Convert that to a physical offset by direction * spacing
+            # SITK's axis=0 => row in direction matrix = dir_mat[:, 0], etc.
+            new_origin = origin.copy()
+            if axis < dim:  # only apply offset if axis < 3 in a 3D scenario
+                offset_vec = dir_mat[:, axis] * (start_idx * spacing[axis])
+                new_origin = origin + offset_vec
+
+            sub_img.SetSpacing(tuple(spacing))
+            sub_img.SetDirection(tuple(direction))
+            sub_img.SetOrigin(tuple(new_origin))
+
+            sub_images.append(sub_img)
+
+        return sub_images
+
+    else:
+        raise TypeError("Unsupported image type. Please provide a nib.Nifti1Image or a sitk.Image.")
