@@ -686,23 +686,21 @@ def split_image(
     """
     Split an image (nibabel or SimpleITK) into multiple parts along a specified axis.
 
-    Parameters
-    ----------
-    img : Union[nib.Nifti1Image, sitk.Image]
-        The NIfTI/ITK image to be split.
-    parts : int
-        Number of parts to split the image into.
-    axis : int, optional
-        The axis along which to split. Default is 0 (the first dimension).
-        - For nibabel, axis=0 often corresponds to the x-dimension in 3D data.
-        - For SimpleITK, axis=0 often corresponds to the z-dimension in 3D data.
+    Parameters:
+        img : Union[nib.Nifti1Image, sitk.Image]
+            The NIfTI/ITK image to be split.
+        parts : int
+            Number of parts to split the image into.
+        axis : int, optional
+            The axis along which to split. Default is 0 (the first dimension).
+            - For nibabel, axis=0 often corresponds to the x-dimension in 3D data.
+            - For SimpleITK, axis=0 often corresponds to the z-dimension in 3D data.
 
-    Returns
-    -------
-    List[Union[nib.Nifti1Image, sitk.Image]]
-        A list of sub-images, each representing part of the original image.
-        - If the input is nibabel, the output list contains nib.Nifti1Image objects.
-        - If the input is SimpleITK, the output list contains sitk.Image objects.
+    Returns:
+        List[Union[nib.Nifti1Image, sitk.Image]]
+            A list of sub-images, each representing part of the original image.
+            - If the input is nibabel, the output list contains nib.Nifti1Image objects.
+            - If the input is SimpleITK, the output list contains sitk.Image objects.
     """
     if parts <= 0:
         raise ValueError("Number of parts must be greater than 0.")
