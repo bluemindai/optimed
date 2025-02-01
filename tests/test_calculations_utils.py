@@ -1,9 +1,11 @@
 import unittest
 import numpy as np
 from optimed.wrappers.calculations import (
-    cupy_available,
+    _cupy_available,
     scipy_label,
     scipy_binary_dilation,
+    scipy_binary_closing,
+    scipy_binary_erosion,
     scipy_distance_transform_edt,
     scipy_minimum,
     scipy_sum,
@@ -26,7 +28,7 @@ class TestArrayFunctions(unittest.TestCase):
         labeled, num_labels = scipy_label(input_array, use_gpu=False)
         self.assertEqual(num_labels, 3, f"Expected 3 labels, got {num_labels}")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for scipy_label.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_label.")
     def test_scipy_label_gpu(self):
         input_array = np.array([
             [0, 1, 1, 0],
@@ -51,7 +53,7 @@ class TestArrayFunctions(unittest.TestCase):
         expected[1:4, 1:4] = True
         self.assertTrue(np.array_equal(dilated, expected), "CPU binary_dilation did not match expected 3x3 block.")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_dilation.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_dilation.")
     def test_scipy_binary_dilation_gpu(self):
         input_array = np.zeros((5, 5), dtype=bool)
         input_array[2, 2] = True
@@ -63,26 +65,91 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertTrue(np.array_equal(dilated, expected), "GPU binary_dilation did not match expected 3x3 block.")
 
     # ---------------------------
+    # Tests for scipy_binary_closing
+    # ---------------------------
+    def test_scipy_binary_closing_cpu(self):
+        # Create an input with a small gap.
+        input_array = np.array([
+            [0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0]
+        ], dtype=bool)
+        structure = np.ones((3, 3), dtype=bool)
+        closed = scipy_binary_closing(input_array, structure=structure, iterations=1, use_gpu=False)
+        # With default constant-padding, the dilation fills the array, but erosion only keeps the center.
+        expected = np.array([
+            [False, False, False],
+            [False, True, False],
+            [False, False, False]
+        ], dtype=bool)
+        self.assertTrue(np.array_equal(closed, expected), "CPU binary_closing did not match expected result.")
+
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_closing.")
+    def test_scipy_binary_closing_gpu(self):
+        input_array = np.array([
+            [0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0]
+        ], dtype=bool)
+        structure = np.ones((3, 3), dtype=bool)
+        closed = scipy_binary_closing(input_array, structure=structure, iterations=1, use_gpu=True)
+        expected = np.array([
+            [False, False, False],
+            [False, True, False],
+            [False, False, False]
+        ], dtype=bool)
+        self.assertTrue(np.array_equal(closed, expected), "GPU binary_closing did not match expected result.")
+
+    # ---------------------------
+    # Tests for scipy_binary_erosion
+    # ---------------------------
+    def test_scipy_binary_erosion_cpu(self):
+        # Create an input with a block of ones.
+        input_array = np.array([
+            [0, 1, 1, 0],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [0, 1, 1, 0]
+        ], dtype=bool)
+        structure = np.ones((3, 3), dtype=bool)
+        eroded = scipy_binary_erosion(input_array, structure=structure, iterations=1, use_gpu=False)
+        # With default constant-padding, none of the pixels have a full 3x3 neighborhood of True.
+        expected = np.zeros((4, 4), dtype=bool)
+        self.assertTrue(np.array_equal(eroded, expected), "CPU binary_erosion did not match expected result.")
+
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_erosion.")
+    def test_scipy_binary_erosion_gpu(self):
+        input_array = np.array([
+            [0, 1, 1, 0],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [0, 1, 1, 0]
+        ], dtype=bool)
+        structure = np.ones((3, 3), dtype=bool)
+        eroded = scipy_binary_erosion(input_array, structure=structure, iterations=1, use_gpu=True)
+        expected = np.zeros((4, 4), dtype=bool)
+        self.assertTrue(np.array_equal(eroded, expected), "GPU binary_erosion did not match expected result.")
+
+    # ---------------------------
     # Tests for scipy_distance_transform_edt
     # ---------------------------
     def test_scipy_distance_transform_edt_cpu(self):
         """
-        Note: To compute the distance from every pixel to the nearest True pixel,
-        we invert the input. (The EDT function computes distances for zero elements.)
+        To compute the distance from every pixel to the nearest True pixel,
+        we invert the input (since EDT computes distances for zeros).
         """
         input_array = np.zeros((5, 5), dtype=bool)
         input_array[2, :] = True  # middle row True
         input_array[:, 2] = True  # middle column True
 
-        # Invert the array so that originally True pixels become False.
+        # Invert the array so that originally True become False.
         dist_trans = scipy_distance_transform_edt(~input_array, use_gpu=False)
-        # Now, for the top-left corner (0,0), the nearest originally True pixel is at (0,2) or (2,0): distance = 2.
+        # For the top-left corner (0,0), the nearest originally True pixel is at (0,2) or (2,0): distance = 2.
         self.assertAlmostEqual(dist_trans[0, 0], 2.0, places=3)
-        # The pixel that was originally True (e.g. at (2,2)) now becomes False in the inverted image
-        # but its nearest original True (which is now a zero in ~input_array) is itself.
+        # The center (2,2) should have a distance of 0.
         self.assertAlmostEqual(dist_trans[2, 2], 0.0, places=3, msg="Center point distance should be 0.")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for scipy_distance_transform_edt.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_distance_transform_edt.")
     def test_scipy_distance_transform_edt_gpu(self):
         input_array = np.zeros((5, 5), dtype=bool)
         input_array[2, :] = True
@@ -111,7 +178,7 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertEqual(min_val_region1, 1, f"Expected min of 1 for region 1, got {min_val_region1}")
         self.assertEqual(min_val_region2, 2, f"Expected min of 2 for region 2, got {min_val_region2}")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for scipy_minimum.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_minimum.")
     def test_scipy_minimum_gpu(self):
         input_array = np.array([
             [3, 4, 5],
@@ -147,7 +214,7 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertEqual(sum_val_region1, 15, f"Expected sum of 15 for region 1, got {sum_val_region1}")
         self.assertEqual(sum_val_region2, 30, f"Expected sum of 30 for region 2, got {sum_val_region2}")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for scipy_sum.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_sum.")
     def test_scipy_sum_gpu(self):
         input_array = np.array([
             [3, 4, 5],
@@ -182,7 +249,7 @@ class TestArrayFunctions(unittest.TestCase):
         ], dtype=np.int32)
         self.assertTrue(np.array_equal(filtered, expected), "filter_mask CPU result is incorrect.")
 
-    @unittest.skipUnless(cupy_available, "cupy not installed. Skipping GPU test for filter_mask.")
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for filter_mask.")
     def test_filter_mask_gpu(self):
         mask = np.array([
             [0, 1, 2],
