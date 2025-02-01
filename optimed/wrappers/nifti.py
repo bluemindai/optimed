@@ -48,7 +48,7 @@ def load_nifti(file: str, canonical: bool=False, mmap: bool=False, engine: str='
 
     if engine == 'nibabel':
         if canonical:
-            return nib.as_closest_canonical(nib.load(file), mmap=mmap)
+            return nib.as_closest_canonical(nib.load(file, mmap=mmap))
         else:
             return nib.load(file, mmap=mmap)
     elif engine == 'sitk':
