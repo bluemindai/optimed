@@ -9,7 +9,7 @@ from typing import Tuple, Union, List
 import warnings
 
 
-def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
+def load_nifti(file: str, canonical: bool=False, mmap: bool=False, engine: str='nibabel') -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Load a NIfTI image from a specified file using either nibabel or SimpleITK.
 
@@ -22,6 +22,11 @@ def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> Union
             (only applicable for nibabel), which is useful for standardizing the orientation of various images 
             for further processing. If False, the image will be returned in its original orientation 
             without any adjustments.
+        mmap : bool, optional
+            If True, the image data will be memory-mapped from the file.
+            This is useful for loading large images without reading the entire data into memory.
+            If False, the entire image data will be loaded into memory.
+            Only applicable for nibabel engine. Defaults to False.
         engine : str, optional
             The engine to use for loading the NIfTI image. Can be 'nibabel' or 'sitk'. 
             Defaults to 'nibabel'.
@@ -43,22 +48,27 @@ def load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> Union
 
     if engine == 'nibabel':
         if canonical:
-            return nib.as_closest_canonical(nib.load(file))
+            return nib.as_closest_canonical(nib.load(file), mmap=mmap)
         else:
-            return nib.load(file)
+            return nib.load(file, mmap=mmap)
     elif engine == 'sitk':
+        mmap = False  # SimpleITK does not support memory mapping
         if canonical:
             warnings.warn("Canonical orientation is not supported with the 'sitk' engine. The image will be loaded in its original orientation.", UserWarning)
         return sitk.ReadImage(file)
 
 
-def load_multilabel_nifti(img: Union[str, nib.Nifti1Image]) -> Tuple[nib.Nifti1Image, dict]:
+def load_multilabel_nifti(img: Union[str, nib.Nifti1Image], mmap: bool=False) -> Tuple[nib.Nifti1Image, dict]:
     """
     Load a NIfTI image with multiple labels and extract the label map.
 
     Parameters:
         img : Union[str, nib.Nifti1Image]
             Path to the NIfTI image file or a nibabel.Nifti1Image object.
+        mmap : bool, optional
+            If True, the image data will be memory-mapped from the file.
+            This is useful for loading large images without reading the entire data into memory.
+            If False, the entire image data will be loaded into memory. Defaults to False.
 
     Returns:
         Tuple[nib.Nifti1Image, dict]
@@ -67,7 +77,7 @@ def load_multilabel_nifti(img: Union[str, nib.Nifti1Image]) -> Tuple[nib.Nifti1I
 
     # Handle both file path and nifti image input
     if isinstance(img, str):
-        img = load_nifti(img, engine='nibabel')
+        img = load_nifti(img, engine='nibabel', mmap=mmap)
     
     ext_header = img.header.extensions[0].get_content()
     ext_header = xmltodict.parse(ext_header)
