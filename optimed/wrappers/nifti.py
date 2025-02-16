@@ -204,7 +204,7 @@ def save_multilabel_nifti(ndarray: np.ndarray,
     header = ref_image.header.copy()
     header.set_data_dtype(dtype)
 
-    img = nib.Nifti1Image(converted_array, affine=affine, header=header)
+    img = nib.Nifti1Image(converted_array, affine=affine, header=header, dtype=dtype)
     img = add_metadata_to_nifti(img, metadata)
     nib.save(img, save_to)
 
@@ -234,7 +234,7 @@ def add_metadata_to_nifti(img_in: nib.Nifti1Image, meta: dict):
 
     assert isinstance(img_in, nib.Nifti1Image), f"Input must be a nibabel.Nifti1Image, got {type(img_in)}"
 
-    data = img_in.get_fdata()
+    data = np.asanyarray(img_in.dataobj)
     valid_labels = set(np.unique(data).astype(int))
 
     # XML preamble
