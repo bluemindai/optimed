@@ -1,10 +1,8 @@
 from typing import Tuple
 import numpy as np
 import warnings
-import importlib
 
-# Check if cupy is available
-_cupy_available = importlib.util.find_spec("cupy") is not None
+from optimed import _cupy_available
 
 from scipy.ndimage import label as _scipy_label_cpu
 from scipy.ndimage import binary_dilation as _scipy_binary_dilation_cpu
@@ -26,7 +24,7 @@ try:
     from cupyx.scipy.ndimage import sum as _scipy_sum_gpu
 except ImportError as exc:
     # Fallback to CPU versions
-    _cupy_available = None
+    _cupy_available = None # noqa
 
 def _ensure_numpy(array):
     """
@@ -38,7 +36,11 @@ def _ensure_numpy(array):
     return array
 
 
-def scipy_label(input: np.ndarray, structure: np.ndarray = None, use_gpu: bool = True) -> Tuple[np.ndarray, int]:
+def scipy_label(
+    input: np.ndarray,
+    structure: np.ndarray = None,
+    use_gpu: bool = True
+) -> Tuple[np.ndarray, int]:
     """
     Labels connected components in the input array.
     Uses GPU acceleration if available and requested.
@@ -59,11 +61,12 @@ def scipy_label(input: np.ndarray, structure: np.ndarray = None, use_gpu: bool =
 
 
 def scipy_binary_dilation(
-        input: np.ndarray,
-        structure: np.ndarray = None,
-        iterations: int = 1,
-        brute_force: bool = False,
-        use_gpu: bool = True) -> np.ndarray:
+    input: np.ndarray,
+    structure: np.ndarray = None,
+    iterations: int = 1,
+    brute_force: bool = False,
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Applies binary dilation to the input array.
     Uses GPU acceleration if available and requested.
@@ -83,7 +86,12 @@ def scipy_binary_dilation(
         return _ensure_numpy(result)
     
 
-def scipy_binary_closing(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, use_gpu: bool = True) -> np.ndarray:
+def scipy_binary_closing(
+    input: np.ndarray,
+    structure: np.ndarray = None,
+    iterations: int = 1,
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Applies binary closing to the input array.
     Uses GPU acceleration if available and requested.
@@ -103,7 +111,12 @@ def scipy_binary_closing(input: np.ndarray, structure: np.ndarray = None, iterat
         return _ensure_numpy(result)
     
 
-def scipy_binary_erosion(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, use_gpu: bool = True) -> np.ndarray:
+def scipy_binary_erosion(
+    input: np.ndarray,
+    structure: np.ndarray = None,
+    iterations: int = 1,
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Applies binary erosion to the input array.
     Uses GPU acceleration if available and requested.
@@ -123,7 +136,11 @@ def scipy_binary_erosion(input: np.ndarray, structure: np.ndarray = None, iterat
         return _ensure_numpy(result)
 
 
-def scipy_distance_transform_edt(input: np.ndarray, sampling: Tuple[float, float] = (1, 1), use_gpu: bool = True) -> np.ndarray:
+def scipy_distance_transform_edt(
+    input: np.ndarray,
+    sampling: Tuple[float, float] = (1, 1),
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Computes the Euclidean distance transform of the input array.
     Uses GPU acceleration if available and requested.
@@ -141,7 +158,12 @@ def scipy_distance_transform_edt(input: np.ndarray, sampling: Tuple[float, float
         return _ensure_numpy(result)
 
 
-def scipy_minimum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True) -> np.ndarray:
+def scipy_minimum(
+    input: np.ndarray,
+    labels: np.ndarray,
+    index: int,
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Finds the minimum value of 'input' within the regions defined by 'labels' for a given index.
     Uses GPU acceleration if available and requested.
@@ -161,7 +183,12 @@ def scipy_minimum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bo
         return _ensure_numpy(result)
 
 
-def scipy_sum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True) -> np.ndarray:
+def scipy_sum(
+    input: np.ndarray,
+    labels: np.ndarray,
+    index: int,
+    use_gpu: bool = True
+) -> np.ndarray:
     """
     Computes the sum of the input values within the regions defined by 'labels' for a given index.
     Uses GPU acceleration if available and requested.
@@ -181,7 +208,12 @@ def scipy_sum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool =
         return _ensure_numpy(result)
 
 
-def filter_mask(mask: np.ndarray, lbls: list, use_gpu: bool = True, verbose: bool = True) -> np.ndarray:
+def filter_mask(
+    mask: np.ndarray,
+    lbls: list,
+    use_gpu: bool = True,
+    verbose: bool = True
+) -> np.ndarray:
     """
     Retains only the pixels in 'mask' whose values are in 'lbls',
     replacing all other values with 0.

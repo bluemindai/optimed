@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
+from optimed import _cupy_available
 from optimed.wrappers.calculations import (
-    _cupy_available,
     scipy_label,
     scipy_binary_dilation,
     scipy_binary_closing,
@@ -14,9 +14,9 @@ from optimed.wrappers.calculations import (
 
 class TestArrayFunctions(unittest.TestCase):
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_label
-    # ---------------------------
+    # ========================
     def test_scipy_label_cpu(self):
         input_array = np.array([
             [0, 1, 1, 0],
@@ -40,9 +40,9 @@ class TestArrayFunctions(unittest.TestCase):
         labeled, num_labels = scipy_label(input_array, use_gpu=True)
         self.assertEqual(num_labels, 3, f"GPU: Expected 3 labels, got {num_labels}")
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_binary_dilation
-    # ---------------------------
+    # ========================
     def test_scipy_binary_dilation_cpu(self):
         input_array = np.zeros((5, 5), dtype=bool)
         input_array[2, 2] = True  # center pixel True
@@ -64,9 +64,9 @@ class TestArrayFunctions(unittest.TestCase):
         expected[1:4, 1:4] = True
         self.assertTrue(np.array_equal(dilated, expected), "GPU binary_dilation did not match expected 3x3 block.")
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_binary_closing
-    # ---------------------------
+    # ========================
     def test_scipy_binary_closing_cpu(self):
         # Create an input with a small gap.
         input_array = np.array([
@@ -100,9 +100,9 @@ class TestArrayFunctions(unittest.TestCase):
         ], dtype=bool)
         self.assertTrue(np.array_equal(closed, expected), "GPU binary_closing did not match expected result.")
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_binary_erosion
-    # ---------------------------
+    # ========================
     def test_scipy_binary_erosion_cpu(self):
         # Create an input with a block of ones.
         input_array = np.array([
@@ -130,9 +130,9 @@ class TestArrayFunctions(unittest.TestCase):
         expected = np.zeros((4, 4), dtype=bool)
         self.assertTrue(np.array_equal(eroded, expected), "GPU binary_erosion did not match expected result.")
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_distance_transform_edt
-    # ---------------------------
+    # ========================
     def test_scipy_distance_transform_edt_cpu(self):
         """
         To compute the distance from every pixel to the nearest True pixel,
@@ -159,9 +159,9 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertAlmostEqual(dist_trans[0, 0], 2.0, places=3)
         self.assertAlmostEqual(dist_trans[2, 2], 0.0, places=3)
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_minimum
-    # ---------------------------
+    # ========================
     def test_scipy_minimum_cpu(self):
         input_array = np.array([
             [3, 4, 5],
@@ -195,9 +195,9 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertEqual(min_val_region1, 1)
         self.assertEqual(min_val_region2, 2)
 
-    # ---------------------------
+    # ========================
     # Tests for scipy_sum
-    # ---------------------------
+    # ========================
     def test_scipy_sum_cpu(self):
         input_array = np.array([
             [3, 4, 5],
@@ -231,9 +231,9 @@ class TestArrayFunctions(unittest.TestCase):
         self.assertEqual(sum_val_region1, 15)
         self.assertEqual(sum_val_region2, 30)
 
-    # ---------------------------
+    # ========================
     # Tests for filter_mask
-    # ---------------------------
+    # ========================
     def test_filter_mask_cpu(self):
         mask = np.array([
             [0, 1, 2],

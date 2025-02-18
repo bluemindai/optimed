@@ -1,167 +1,101 @@
 # Operations Utilities
 
-This module provides a collection of convenient utility functions for working with files and directories. It simplifies common tasks such as file manipulation, directory management, JSON handling, and working with file system paths. The goal of this library is to make file and directory operations more intuitive, concise, and reliable.
+## Overview
+This module provides a collection of convenient utility functions for file and directory operations. In addition to basic tasks such as copying, moving, and renaming files, it offers enhanced support for JSON/YAML handling and robust functions for managing file system paths and directories. These utilities aim to simplify common file system operations, making your code more intuitive and reliable.
 
 ## Functions
 
 ### 1. `maybe_mkdir(directory: str) -> None`
 Creates the specified directory if it does not already exist. It also creates any necessary parent directories.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory to create.
 - **Returns**: None.
 
 ### 2. `maybe_remove_dir(directory: str) -> None`
 Removes the specified directory if it exists. If the file does not exist, no action is taken.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory to remove.
 - **Returns**: None.
 
 ### 3. `maybe_remove_file(file_path: str) -> None`
 Removes the specified file if it exists.
-
-- **Parameters**:
-  - `file_path` (str): The path of the file to remove.
 - **Returns**: None.
 
 ### 4. `copy_file(src: str, dest: str) -> None`
 Copies a file from the source path to the destination path.
-
-- **Parameters**:
-  - `src` (str): The path of the file to copy.
-  - `dest` (str): The path where the file should be copied.
 - **Returns**: None.
 
 ### 5. `move_file(src: str, dest: str) -> None`
 Moves a file from the source path to the destination path.
-
-- **Parameters**:
-  - `src` (str): The path of the file to move.
-  - `dest` (str): The path where the file should be moved.
 - **Returns**: None.
 
 ### 6. `rename_file(src: str, new_name: str) -> None`
 Renames the specified file to the new name.
-
-- **Parameters**:
-  - `src` (str): The current path of the file.
-  - `new_name` (str): The new name for the file.
 - **Returns**: None.
 
 ### 7. `get_file_size(file_path: str) -> int`
 Returns the size of the specified file in bytes.
-
-- **Parameters**:
-  - `file_path` (str): The path of the file.
 - **Returns**: Size of the file in bytes.
 
 ### 8. `if_file_exists(file_path: str) -> bool`
 Checks whether the specified file exists.
-
-- **Parameters**:
-  - `file_path` (str): The path of the file to check.
 - **Returns**: True if the file exists, False otherwise.
 
 ### 9. `if_directory_exists(directory: str) -> bool`
 Checks whether the specified directory exists.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory to check.
 - **Returns**: True if the directory exists, False otherwise.
 
 ### 10. `read_file(file_path: str) -> str`
 Reads the contents of the specified file and returns it as a string.
-
-- **Parameters**:
-  - `file_path` (str): The path of the file to be read.
 - **Returns**: Contents of the file.
 
 ### 11. `write_to_file(content: str, file_path: str) -> None`
 Writes the specified content to a file. Overwrites the file if it already exists.
-
-- **Parameters**:
-  - `content` (str): The content to write to the file.
-  - `file_path` (str): The path of the file.
 - **Returns**: None.
 
 ### 12. `append_to_file(content: str, file_path: str) -> None`
 Appends the specified content to a file. Creates the file if it does not exist.
-
-- **Parameters**:
-  - `content` (str): The content to append to the file.
-  - `file_path` (str): The path of the file.
 - **Returns**: None.
 
 ### 13. `get_file_extension(file_path: str) -> str`
 Returns the file extension of the specified file.
-
-- **Parameters**:
-  - `file_path` (str): The path of the file.
 - **Returns**: The file extension, including the dot (e.g., '.txt').
 
 ### 14. `get_absolute_path(path: str) -> str`
 Returns the absolute path of the specified file or directory.
-
-- **Parameters**:
-  - `path` (str): The relative or absolute path.
 - **Returns**: The absolute path.
 
 ### 15. `count_files(directory: str) -> int`
 Counts the number of files in the specified directory.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory to count files in.
 - **Returns**: The number of files in the directory.
 
 ### 16. `list_dir(directory: str) -> list`
 Lists the contents of the specified directory.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory.
 - **Returns**: A list of the names of the entries in the directory.
 
 ### 17. `list_subdirs(directory: str) -> list`
 Lists all subdirectories within the specified directory.
-
-- **Parameters**:
-  - `directory` (str): The path of the directory.
 - **Returns**: A list of the names of the subdirectories.
 
 ### 18. `load_json(file: str)`
 Loads and returns the contents of a JSON file as a Python object.
-
-- **Parameters**:
-  - `file` (str): The path of the JSON file to load.
 - **Returns**: The parsed contents of the JSON file.
 
 ### 19. `save_json(obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=None) -> None`
 Saves a Python object to a JSON file with optional custom formatting and encoding.
-
-- **Parameters**:
-  - `obj`: The Python object to serialize and save.
-  - `file` (str): The path to the JSON file.
-  - `indent` (int, optional): Number of spaces to use for indentation.
-  - `ensure_ascii` (bool, optional): Whether to escape non-ASCII characters.
-  - `cls` (optional): A custom encoder class for non-serializable objects.
 - **Returns**: None.
 
 ### 20. `load_yaml(file: str)`
 Loads and returns the contents of a YAML file as a Python object.
-
-- **Parameters**:
-  - `file` (str): The path of the YAML file to load.
 - **Returns**: The parsed contents of the YAML file.
 
 ### 21. `save_yaml(obj, file: str, default_flow_style: bool = False, indent: int = 2) -> None`
 Saves a Python object to a YAML file.
-
-- **Parameters**:
-  - `obj`: The Python object to serialize and save.
-  - `file` (str): The path to the YAML file.
-  - `default_flow_style` (bool, optional): Whether to use block style. Defaults to False.
-  - `indent` (int, optional): Number of spaces to use for indentation. Defaults to 2.
 - **Returns**: None.
+
+### 22. `recursively_find_file(filename: str, start_path: str = ".") -> List[str]`
+Recursively searches for files named `filename` starting from `start_path`.
+- **Returns**: A list of matching file paths.
+
+### 23. `recursive_find_python_class(folder: str, class_name: str, current_module: str) -> object`
+Recursively searches for a Python class within modules in the specified folder.
+- **Returns**: The class object if found, otherwise None.
 
 ## Usage Examples
 

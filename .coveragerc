@@ -3,6 +3,8 @@ omit =
     tests/*
     optimed/__init__.py
     optimed/wrappers/__init__.py
+    optimed/processes/__init__.py
+    optimed/processes/preview.py
 
 [report]
 exclude_lines =

@@ -3,7 +3,6 @@ import numpy as np
 import nibabel as nib
 import SimpleITK as sitk
 import os
-import warnings
 from optimed.wrappers.nifti import *
 from tempfile import TemporaryDirectory
 
