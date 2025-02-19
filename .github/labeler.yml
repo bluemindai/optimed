@@ -1,0 +1,42 @@
+# .github/labeler.yml
+
+# Label any changes to files in the repository root (e.g. README, .gitignore, etc.)
+root:
+  - changed-files:
+      - any-glob-to-any-file: "*"
+
+# Label any changes anywhere in the repository
+AnyChange:
+  - changed-files:
+      - any-glob-to-any-file: "**"
+
+# Label changes to documentation:
+# - Files in the docs or guides folders
+# - Markdown files anywhere in the repository
+Documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "guides/**"
+          - "**/*.md"
+
+# Label any changes in the main backend source folder
+backend:
+  - changed-files:
+      - any-glob-to-any-file: "optimed/**"
+
+# Label PRs as bug fixes if the head branch name indicates a bug
+bugs:
+  - head-branch: ['^bug', 'bug']
+
+# Label PRs as enhancements (or enchantments) if the branch name indicates it
+enchantment:
+  - head-branch: ['^enchant', 'enchant']
+
+# Label PRs as features if the branch name starts with or contains "feature"
+feature:
+  - head-branch: ['^feature', 'feature']
+
+# Label PRs as release candidates if they are opened against the master branch
+release:
+  - base-branch: "master"
