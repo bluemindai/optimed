@@ -38,13 +38,12 @@ fi
 echo "Activating virtual environment..."
 . venv/bin/activate
 
-# Upgrade pip and install project dependencies from requirements.txt
-if [ -f requirements.txt ]; then
-    echo "Installing dependencies..."
-    pip install --upgrade pip
-    pip install -r requirements.txt || { echo "Failed to install dependencies"; exit 1; }
-else
-    echo "No requirements.txt found, skipping dependency installation."
+# Upgrade pip and install project dependencies
+echo "Installing dependencies..."
+pip install --upgrade pip
+# Install the package in editable mode (assumes proper package metadata)
+pip install -e . || { echo "Failed to install dependencies"; exit 1; }
+
 fi
 
 echo "Configuration complete. You can now run 'make' to build or test the project."
