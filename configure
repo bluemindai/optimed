@@ -1,0 +1,50 @@
+#!/bin/sh
+# Simple configure script for Optimed
+
+echo "Configuring Optimed..."
+
+# Check for python3 or python
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "Error: Python is not installed."
+    exit 1
+fi
+
+# Verify Python version (requires 3.6 or higher)
+PYTHON_VERSION=$($PYTHON -c 'import sys; print("{}.{}".format(*sys.version_info[:2]))')
+REQUIRED_VERSION="3.6"
+if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+    echo "Error: Python $REQUIRED_VERSION or higher is required. Detected version: $PYTHON_VERSION"
+    exit 1
+fi
+
+echo "Using Python: $PYTHON ($PYTHON_VERSION)"
+
+# Check for pip
+if ! command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then
+    echo "Error: pip is not installed."
+    exit 1
+fi
+
+# Optionally, create a virtual environment if one does not exist
+if [ ! -d venv ]; then
+    echo "Creating virtual environment..."
+    $PYTHON -m venv venv || { echo "Failed to create virtual environment"; exit 1; }
+fi
+
+echo "Activating virtual environment..."
+. venv/bin/activate
+
+# Upgrade pip and install project dependencies from requirements.txt
+if [ -f requirements.txt ]; then
+    echo "Installing dependencies..."
+    pip install --upgrade pip
+    pip install -r requirements.txt || { echo "Failed to install dependencies"; exit 1; }
+else
+    echo "No requirements.txt found, skipping dependency installation."
+fi
+
+echo "Configuration complete. You can now run 'make' to build or test the project."
