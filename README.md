@@ -19,7 +19,7 @@ Thanks so much to all of our amazing contributors!
 
 ## Contributor License Agreement
 This project welcomes contributions and suggestions. Most contributions require you to
-agree to a Contributor License Agreement (CLA) declaring that you have the right to, and
+agree to a [Contributor License Agreement](CONTRIBUTING.md) (CLA) declaring that you have the right to, and
 actually do, grant us the rights to use your contribution. 
 
 # License
@@ -35,7 +35,7 @@ If you use ```optimed``` in your research, please cite it as follows:
     title={optmed - CV Medical Library}, 
     author={BlueMind AI Inc. and Roman Fitzjalen, Gleb Sakhnov, Georgy Nanyan},
     year={2025},
-    note={Version 3.0}
+    note={Version 1.0.0}
 }
 ```
 ## Contact

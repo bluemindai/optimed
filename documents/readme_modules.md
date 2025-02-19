@@ -26,22 +26,27 @@ The `wrappers` module is a collection of wrapper functions built around core lib
 The processes module includes functions to crop, convert, resample, preview, and postprocess medical images. These submodules streamline various stages of image analysis and integrate seamlessly with the wrappers.
 
 ### Available Processes
-1. **Crop Utilities**  
+
+1. **Image Utilities**  
+   Provides advanced image processing functions such as intensity rescaling, noise reduction, threshold-based segmentation, and region-specific filtering.  
+   [Read the documentation](readme_image_module.md)
+
+2. **Crop Utilities**  
    Provides image cropping functionalities for isolating regions of interest.  
    [Read the documentation](readme_module_crop.md)
 
-2. **Convert Utilities**  
+3. **Convert Utilities**  
    Contains tools for converting medical image formats (e.g., DICOM, NRRD, MHA) to NIfTI.  
    [Read the documentation](readme_module_convert.md)
 
-3. **Resample Utilities**  
+4. **Resample Utilities**  
    Offers methods for resampling images to adjust resolution and spacing.  
    [Read the documentation](readme_module_resample.md)
 
-4. **Preview Utilities**  
+5. **Preview Utilities**  
    Facilitates 3D visualization of medical image segmentations using VTK.  
    [Read the documentation](readme_module_preview.md)
 
-5. **Postprocess Utilities**  
+6. **Postprocess Utilities**  
    Provides post-processing functions to clean and refine segmentation outputs.  
    [Read the documentation](readme_module_postprocess.md)

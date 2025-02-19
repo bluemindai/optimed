@@ -8,7 +8,6 @@ This module provides GPU-accelerated and CPU fallback implementations of common 
 ### 1. `scipy_label(input: np.ndarray, structure: np.ndarray = None, use_gpu: bool = True) -> Tuple[np.ndarray, int]`
 Labels connected components in an input array using GPU acceleration when available.
 - Additional Info: Connected component labeling identifies and labels contiguous regions within an image.
-
 - **Returns**: A tuple with the labeled array and the number of components.
 
 ---
@@ -16,7 +15,6 @@ Labels connected components in an input array using GPU acceleration when availa
 ### 2. `scipy_binary_dilation(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, brute_force: bool = False, use_gpu: bool = True) -> np.ndarray`
 Applies binary dilation to the input array, using the GPU if available.
 - Additional Info: Binary dilation is an image processing operation that expands object boundaries, making objects larger.
-
 - **Returns**: The dilated array.
 
 ---
@@ -24,7 +22,6 @@ Applies binary dilation to the input array, using the GPU if available.
 ### 3. `scipy_binary_closing(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, use_gpu: bool = True) -> np.ndarray`
 Performs binary closing to fill gaps in binary images.
 - Additional Info: Binary closing is an image processing technique that fills small holes within objects by dilating then eroding the image.
-
 - **Returns**: The closed array.
 
 ---
@@ -32,7 +29,6 @@ Performs binary closing to fill gaps in binary images.
 ### 4. `scipy_binary_erosion(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, use_gpu: bool = True) -> np.ndarray`
 Applies binary erosion to shrink objects in a binary image.
 - Additional Info: Binary erosion is an operation that reduces the object boundaries, effectively removing small-scale noise.
-
 - **Returns**: The eroded array.
 
 ---
@@ -40,7 +36,6 @@ Applies binary erosion to shrink objects in a binary image.
 ### 5. `scipy_distance_transform_edt(input: np.ndarray, sampling: Tuple[float, float] = (1, 1), use_gpu: bool = True) -> np.ndarray`
 Calculates the Euclidean distance transform.
 - Additional Info: The distance transform computes the distance of each pixel to the nearest background pixel, which is useful for shape analysis.
-
 - **Returns**: The distance-transformed array.
 
 ---
@@ -48,7 +43,6 @@ Calculates the Euclidean distance transform.
 ### 6. `scipy_minimum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True) -> np.ndarray`
 Finds the minimum value within regions defined by a label array.
 - Additional Info: Minimum filtering extracts the smallest value in a specified region, assisting in segmentation tasks.
-
 - **Returns**: The minimum value.
 
 ---
@@ -56,7 +50,6 @@ Finds the minimum value within regions defined by a label array.
 ### 7. `scipy_sum(input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True) -> np.ndarray`
 Computes the sum of values over regions specified by labels.
 - Additional Info: This function aggregates pixel values over a labeled region, providing a measure of total intensity.
-
 - **Returns**: The sum.
 
 ---
@@ -64,7 +57,6 @@ Computes the sum of values over regions specified by labels.
 ### 8. `filter_mask(mask: np.ndarray, lbls: list, use_gpu: bool = True, verbose: bool = True) -> np.ndarray`
 Filters the input mask so that only specified label values remain.
 - Additional Info: Filter mask operation retains only the designated labels, removing unwanted regions.
-
 - **Returns**: The filtered mask.
 
 ## Usage Example
