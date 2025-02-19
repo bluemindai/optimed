@@ -9,11 +9,6 @@ It simplifies the tasks of loading, transforming, analyzing, and visualizing dat
 
 Read more about available modules [here](documents/readme_modules.md)
 
-# Install
-Below is an improved version of the installation instructions that you could use for the Optimed repository:
-
----
-
 ## Installation
 
 Optimed is available via [PyPI](https://pypi.org/project/optimed/), which makes installation quick and easy. Follow the steps below to install the package for your desired setup.
