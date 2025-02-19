@@ -316,45 +316,40 @@ def delete_segments_disconnected_from_parent(
     parent_mask = xp.array(parent_mask)
 
     if verbose:
-        print("[postprocessing] deleting disconnected components...")
-
-    binary_mask = xp.array(binary_mask)
-    parent_mask = xp.array(parent_mask)
+        print("[postprocessing] Deleting disconnected components...")
 
     connected_components, num_components = scipy_label(binary_mask, use_gpu=use_gpu)
-    connected_components = xp.array(connected_components)
     if verbose:
         print(f"\tFound {num_components} components.")
 
-    # Compute component sizes (include background label 0)
     comp_sizes = xp.bincount(connected_components.ravel())
-    # Compute for each component the number of pixels that intersect the parent_mask.
-    # For each pixel in connected_components, if parent_mask is True, we add 1.
-    parent_intersections = scipy_sum(parent_mask, labels=connected_components, index=np.arange(comp_sizes.size), use_gpu=use_gpu)
-    parent_intersections = xp.array(parent_intersections)
-    # We ignore label 0 (background) in the removal decision.
+
+    parent_intersections = scipy_sum(
+        parent_mask, labels=connected_components,
+        index=xp.arange(comp_sizes.size), use_gpu=use_gpu
+    )
+
+    # Analyze only components with label 1..num_components (skip background)
     comp_labels = xp.arange(1, num_components + 1)
     comp_sizes = comp_sizes[1:]
     parent_intersections = parent_intersections[1:]
 
-    # Determine which labels to remove:
-    # - Remove a component if it does not intersect with the parent_mask.
-    # - For components that do intersect, remove if the size is smaller than the size_threshold.
-    remove_labels = comp_labels[(parent_intersections == 0) | ((parent_intersections > 0) & (comp_sizes < size_threshold))]
+    # Conditions for removal:
+    # 1) No intersection with parent (parent_intersections == 0)
+    # 2) Intersection exists, but component size is below size_threshold
+    remove_labels = comp_labels[
+        (parent_intersections == 0) |
+        ((parent_intersections > 0) & (comp_sizes < size_threshold))
+    ]
 
     if verbose:
         for lbl in remove_labels:
-            # Use 1-indexed labels. Since we've already removed background, subtract one for indexing.
             idx = lbl - 1
             if parent_intersections[idx] == 0:
-                print(
-                    f"\tDeleting component {lbl} (size: {comp_sizes[idx]}) "
-                    "with no intersection with parent mask."
-                )
+                print(f"\tDeleting component {lbl} (size={comp_sizes[idx]}) - no intersection with parent.")
             else:
-                print(f"\tDeleting small component {lbl} (size: {comp_sizes[idx]}).")
+                print(f"\tDeleting small component {lbl} (size={comp_sizes[idx]}) - below threshold.")
 
-    # Remove the marked components from binary_mask in one vectorized step.
     mask_to_remove = xp.isin(connected_components, remove_labels)
     binary_mask[mask_to_remove] = 0
 
@@ -446,84 +441,6 @@ def delete_segments_distant_from_point(
 
     if remove_labels.size > 0:
         binary_mask[xp.isin(connected_components, remove_labels)] = 0
-
-    if not isinstance(binary_mask, np.ndarray):
-        binary_mask = binary_mask.get()
-
-    return binary_mask
-
-
-def delete_segments_disconnected_from_parent(
-    binary_mask: np.ndarray,
-    parent_mask: np.ndarray,
-    size_threshold: int = 10,
-    use_gpu: bool = True,
-    verbose: bool = True
-) -> np.ndarray:
-    """
-    Remove segments (in binary_mask) corresponding to connected regions in binary_mask
-    that are either completely disconnected from parent_mask or are too small.
-
-    Parameters:
-        binary_mask (np.ndarray): Binary mask with disconnected segments.
-        parent_mask (np.ndarray): Reference mask.
-        size_threshold (int): Minimum allowed component size for those that intersect the parent_mask.
-        use_gpu (bool, optional): If True, use GPU acceleration.
-        verbose (bool, optional): If True, print progress information.
-
-    Returns:
-        np.ndarray: Updated binary_mask with disconnected segments removed.
-    """
-
-    if not use_gpu or not _cupy_available:
-        xp = np
-
-    if not xp.any(binary_mask):
-        return binary_mask
-    
-    if not xp.any(parent_mask):
-        return binary_mask
-
-    binary_mask = xp.array(binary_mask)
-    parent_mask = xp.array(parent_mask)
-
-    if verbose:
-        print("[postprocessing] Deleting disconnected components...")
-
-    connected_components, num_components = scipy_label(binary_mask, use_gpu=use_gpu)
-    if verbose:
-        print(f"\tFound {num_components} components.")
-
-    comp_sizes = xp.bincount(connected_components.ravel())
-
-    parent_intersections = scipy_sum(
-        parent_mask, labels=connected_components,
-        index=xp.arange(comp_sizes.size), use_gpu=use_gpu
-    )
-
-    # Analyze only components with label 1..num_components (skip background)
-    comp_labels = xp.arange(1, num_components + 1)
-    comp_sizes = comp_sizes[1:]
-    parent_intersections = parent_intersections[1:]
-
-    # Conditions for removal:
-    # 1) No intersection with parent (parent_intersections == 0)
-    # 2) Intersection exists, but component size is below size_threshold
-    remove_labels = comp_labels[
-        (parent_intersections == 0) |
-        ((parent_intersections > 0) & (comp_sizes < size_threshold))
-    ]
-
-    if verbose:
-        for lbl in remove_labels:
-            idx = lbl - 1
-            if parent_intersections[idx] == 0:
-                print(f"\tDeleting component {lbl} (size={comp_sizes[idx]}) - no intersection with parent.")
-            else:
-                print(f"\tDeleting small component {lbl} (size={comp_sizes[idx]}) - below threshold.")
-
-    mask_to_remove = xp.isin(connected_components, remove_labels)
-    binary_mask[mask_to_remove] = 0
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()

@@ -158,7 +158,7 @@ def resample_img(
 
     dim = len(img.shape)
 
-    # Add dimesions to make each input 4D
+    # Add dimensions to make each input 4D
     if dim == 2:
         img = img[..., None, None]
     if dim == 3:
