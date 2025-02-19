@@ -12,8 +12,6 @@ authors = [
     { name = "Roman Fitzjalen", email = "info@bluemind.co" }
 ]
 dependencies = [
-    "cupy-cuda12x==13.0.0; platform_system != 'Darwin'",
-    "pylibraft-cu12==24.8.1; platform_system != 'Darwin'",
     "numpy==1.26.3",
     "nibabel==5.2.1",
     "SimpleITK==2.3.1",
@@ -43,3 +41,9 @@ exclude = [".venv-optimed", ".vscode", ".history", "local", ".github"]
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg'
+
+[project.optional-dependencies]
+gpu = [
+    "cupy-cuda12x==13.0.0; platform_system != 'Darwin'",
+    "pylibraft-cu12==24.8.1; platform_system != 'Darwin'"
+]
