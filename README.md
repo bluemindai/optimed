@@ -7,7 +7,7 @@
 Optimed is a tool for working with 2D/3D medical images.  
 It simplifies the tasks of loading, transforming, analyzing, and visualizing data for medical research and clinical practice.
 
-Read more about available modules [here](documents/readme_module_resample.md)
+Read more about available modules [here](documents/readme_modules.md)
 
 # Contributing
 Optimed welcomes your contributions!<br>
