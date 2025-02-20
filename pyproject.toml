@@ -7,7 +7,7 @@ name = "optimed"
 version = "1.0.0-preview"
 description = "Optimed"
 readme = "README.md"
-license = { text = "Private Commercial License" }
+license = { text = "Apache-2.0" }
 authors = [
     { name = "Roman Fitzjalen", email = "info@bluemind.co" }
 ]
