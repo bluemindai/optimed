@@ -4,6 +4,7 @@ cupy-cuda12x==13.0.0
 pylibraft-cu12==24.8.1 
 numpy==1.26.3
 nibabel==5.2.1
+slicerio==1.1.2
 SimpleITK==2.4.1
 pyyaml==6.0.2
 xmltodict==0.14.2
