@@ -54,7 +54,7 @@ By the way, if by chance you ever run into me on the street, in a café, hotel, 
 If you use ```optimed``` in your research, please cite it as follows:
 ```
 @misc{optimed2025,
-    title={optmed - CV Medical Library}, 
+    title={optimed - CV Medical Library}, 
     author={BlueMind AI Inc. and Roman Fitzjalen, Gleb Sakhnov, Georgy Nanyan},
     year={2025},
     note={Version 1.0.0}
