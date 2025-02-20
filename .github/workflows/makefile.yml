@@ -28,6 +28,6 @@ jobs:
           pip install meson ninja
           pip install -e .
 
-      - name: Run Makefile target (e.g., test)
+      - name: Run Makefile target (pre-commit and tests)
         run: |
-          make test
+          make all
