@@ -9,6 +9,28 @@ It simplifies the tasks of loading, transforming, analyzing, and visualizing dat
 
 Read more about available modules [here](documents/readme_modules.md)
 
+## Installation
+
+Optimed is available via [PyPI](https://pypi.org/project/optimed/), which makes installation quick and easy. Follow the steps below to install the package for your desired setup.
+
+### 1. Standard Installation (CPU Only)
+
+For most users who do not require GPU acceleration, install the core package with:
+
+```bash
+pip install optimed
+```
+
+### 2. GPU-Accelerated Installation
+
+To leverage GPU capabilities for faster processing, install Optimed with GPU support:
+
+```bash
+pip install optimed[gpu]
+```
+
+> **Note:** Ensure you have a compatible GPU and have installed the necessary drivers and libraries (such as CUDA) to enable GPU acceleration.
+
 # Contributing
 Optimed welcomes your contributions!<br>
 Thanks so much to all of our amazing contributors!

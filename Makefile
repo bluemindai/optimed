@@ -1,6 +1,8 @@
 .PHONY: all
-all: test
-
+all: pre-commit test
+.PHONY: pre-commit
+pre-commit:
+	pre-commit run --all-files
 .PHONY: test
 test:
 	coverage run -m unittest discover -s tests

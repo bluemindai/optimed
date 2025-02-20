@@ -1,0 +1,33 @@
+name: CI Workflow
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install OpenBLAS dependencies
+        run: sudo apt-get update && sudo apt-get install -y libopenblas-dev liblapack-dev
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install meson ninja
+          pip install -e .
+
+      - name: Run Makefile target (pre-commit and tests)
+        run: |
+          make all
