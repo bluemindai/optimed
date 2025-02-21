@@ -6,11 +6,12 @@ import slicerio
 import random
 
 
+# fmt: off
 def load_nrrd(
     file: str,
     data_only: bool = False,
     header_only: bool = False
-) -> Tuple[np.ndarray, dict]:
+) -> Tuple[np.ndarray, dict]: # fmt: on
     """
     Load a NRRD image from the specified file.
 
@@ -24,7 +25,7 @@ def load_nrrd(
     """
     assert exists(file), f"File does not exist: {file}"
     assert isfile(file), f"{file} is not a file"
-    assert file.lower().endswith('.nrrd'), "Invalid file extension, expected '.nrrd'"
+    assert file.lower().endswith(".nrrd"), "Invalid file extension, expected '.nrrd'"
 
     try:
         data, header = nrrd.read(file)
@@ -42,7 +43,7 @@ def save_nrrd(
     ndarray: np.ndarray,
     header: dict = None,
     compression_level: int = 9,
-    save_to: str = 'image.nrrd'
+    save_to: str = "image.nrrd",
 ) -> None:
     """
     Save a NRRD image.
@@ -57,22 +58,23 @@ def save_nrrd(
         None
     """
     assert isinstance(ndarray, np.ndarray), "ndarray must be a numpy.ndarray object."
-    assert isinstance(compression_level, int) and 1 <= compression_level <= 9, \
-        "Compression level must be an integer between 1 and 9."
-    assert save_to.lower().endswith('.nrrd'), "Invalid file extension, expected '.nrrd'"
+    assert (
+        isinstance(compression_level, int) and 1 <= compression_level <= 9
+    ), "Compression level must be an integer between 1 and 9."
+    assert save_to.lower().endswith(".nrrd"), "Invalid file extension, expected '.nrrd'"
 
     default_header = {
-        'encoding': 'gzip',
-        'endian': 'little',
-        'dimension': 3,
-        'type': str(ndarray.dtype),
-        'space': 'left-posterior-superior',
-        'space directions': [['1', '0', '0'], ['0', '1', '0'], ['0', '0', '1']],
-        'space origin': ['0', '0', '0'],
-        'kinds': ['domain', 'domain', 'domain'],
-        'space units': ['mm', 'mm', 'mm'],
-        'space dimension': 3,
-        'sizes': ndarray.shape,
+        "encoding": "gzip",
+        "endian": "little",
+        "dimension": 3,
+        "type": str(ndarray.dtype),
+        "space": "left-posterior-superior",
+        "space directions": [["1", "0", "0"], ["0", "1", "0"], ["0", "0", "1"]],
+        "space origin": ["0", "0", "0"],
+        "kinds": ["domain", "domain", "domain"],
+        "space units": ["mm", "mm", "mm"],
+        "space dimension": 3,
+        "sizes": ndarray.shape,
     }
 
     final_header = default_header.copy()
@@ -80,15 +82,20 @@ def save_nrrd(
         final_header.update(header)
 
     try:
-        nrrd.write(file=save_to, data=ndarray, header=final_header, compression_level=compression_level)
+        nrrd.write(
+            file=save_to,
+            data=ndarray,
+            header=final_header,
+            compression_level=compression_level,
+        )
     except Exception as e:
         raise ValueError(f"Error saving NRRD file: {str(e)}")
 
 
 def save_multilabel_nrrd_seg(
     ndarray: np.ndarray,
-    segment_metadata: list=None,
-    save_to: str='segmentation.seg.nrrd'
+    segment_metadata: list = None,
+    save_to: str = "segmentation.seg.nrrd",
 ) -> None:
     """
     Save a multilabel segmentation in NRRD format.
@@ -102,20 +109,28 @@ def save_multilabel_nrrd_seg(
         None
     """
     assert isinstance(ndarray, np.ndarray), "ndarray must be a numpy.ndarray object."
-    assert save_to.endswith('.seg.nrrd'), "Invalid file extension, expected '.seg.nrrd'"
+    assert save_to.endswith(".seg.nrrd"), "Invalid file extension, expected '.seg.nrrd'"
     if segment_metadata:
         for seg in segment_metadata:
             if not isinstance(seg, dict):
                 raise ValueError("Each segment metadata must be a dictionary.")
             if "labelValue" not in seg or "name" not in seg:
-                raise ValueError("Each segment metadata dictionary must have 'labelValue' and 'name' keys.")
+                raise ValueError(
+                    "Each segment metadata dictionary must have 'labelValue' and 'name' keys."
+                )
             if not isinstance(seg["labelValue"], int):
-                raise ValueError("Each segment metadata 'labelValue' must be an integer.")
+                raise ValueError(
+                    "Each segment metadata 'labelValue' must be an integer."
+                )
             if "color" in seg:
                 if not isinstance(seg["color"], list):
-                    raise ValueError("Segment metadata 'color' must be a list of 3 floats.")
+                    raise ValueError(
+                        "Segment metadata 'color' must be a list of 3 floats."
+                    )
                 if len(seg["color"]) != 3:
-                    raise ValueError("Segment metadata 'color' must be a list of 3 floats.")
+                    raise ValueError(
+                        "Segment metadata 'color' must be a list of 3 floats."
+                    )
                 # Adapt color if values appear to be in the 0-255 range
                 if any(c > 1 for c in seg["color"]):
                     seg["color"] = [round(c / 255.0, 2) for c in seg["color"]]
@@ -123,11 +138,11 @@ def save_multilabel_nrrd_seg(
     def _random_color():
         """Generate a random RGB color with values between 0 and 1."""
         return [round(random.random(), 2) for _ in range(3)]
-    
+
     for seg in segment_metadata:
-            if "color" not in seg:
-                seg["color"] = _random_color()
-    
+        if "color" not in seg:
+            seg["color"] = _random_color()
+
     # Assign metadata to the segmentation dictionary
     ndarray["segments"] = segment_metadata
 
