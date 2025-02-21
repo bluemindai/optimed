@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "1.0.0a0"
 
 
 def _check_availability(name: str) -> bool:
