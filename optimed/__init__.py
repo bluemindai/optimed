@@ -1,4 +1,11 @@
-import importlib.util
+__version__ = "1.0.0"
 
-_cupy_available = importlib.util.find_spec("cupy") is not None
-_cucim_available = importlib.util.find_spec("cucim") is not None
+
+def _check_availability(name: str) -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec(name) is not None
+
+
+_cupy_available = _check_availability("cupy")
+_cucim_available = _check_availability("cucim")

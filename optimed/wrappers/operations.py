@@ -15,7 +15,7 @@ listdir = os.listdir
 
 def maybe_mkdir(directory: str) -> None:
     """
-    Creates the specified directory if it does not already exist. If the directory 
+    Creates the specified directory if it does not already exist. If the directory
     or any of its parent directories do not exist, they will be created.
 
     Parameters:
@@ -146,7 +146,7 @@ def read_file(file_path: str) -> str:
     Returns:
         str: The contents of the file.
     """
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         return f.read()
 
 
@@ -161,7 +161,7 @@ def write_to_file(content: str, file_path: str) -> None:
     Returns:
         None
     """
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         f.write(content)
 
 
@@ -176,7 +176,7 @@ def append_to_file(content: str, file_path: str) -> None:
     Returns:
         None
     """
-    with open(file_path, 'a') as f:
+    with open(file_path, "a") as f:
         f.write(content)
 
 
@@ -216,7 +216,9 @@ def count_files(directory: str) -> int:
     Returns:
         int: The number of files in the directory.
     """
-    return len([entry for entry in listdir(directory) if isfile(join(directory, entry))])
+    return len(
+        [entry for entry in listdir(directory) if isfile(join(directory, entry))]
+    )
 
 
 def list_dir(directory: str) -> list:
@@ -249,7 +251,7 @@ def load_json(file: str):
     """
     Loads and returns the contents of a JSON file.
 
-    This function reads the specified JSON file, parses its contents, and returns the resulting 
+    This function reads the specified JSON file, parses its contents, and returns the resulting
     Python object (usually a dictionary or a list).
 
     Parameters:
@@ -258,34 +260,36 @@ def load_json(file: str):
     Returns:
         The parsed contents of the JSON file, typically a dictionary or a list.
     """
-    with open(file, 'r', encoding='utf8') as f:
+    with open(file, "r", encoding="utf8") as f:
         a = json.load(f)
     return a
 
 
-def save_json(obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=None) -> None:
+def save_json(
+    obj, file: str, indent: int = 4, ensure_ascii: bool = False, cls=None
+) -> None:
     """
     Saves a Python object to a JSON file with optional custom encoding.
 
-    This function serializes the given Python object (usually a dictionary or a list) 
-    into a JSON formatted string and writes it to the specified file. If a custom encoder 
-    class is provided, it will be used to serialize objects that aren't natively serializable 
+    This function serializes the given Python object (usually a dictionary or a list)
+    into a JSON formatted string and writes it to the specified file. If a custom encoder
+    class is provided, it will be used to serialize objects that aren't natively serializable
     by the default `json` module.
 
     Parameters:
         obj: The Python object to be serialized and saved to a JSON file.
         file (str): The path to the file where the JSON data will be saved.
-        indent (int, optional): The number of spaces to use as indentation in the JSON file. 
+        indent (int, optional): The number of spaces to use as indentation in the JSON file.
                                 Defaults to 4 for pretty-printing.
-        ensure_ascii (bool, optional): If False, the JSON file will be saved with Unicode characters 
+        ensure_ascii (bool, optional): If False, the JSON file will be saved with Unicode characters
                                        instead of escaping them. Defaults to False.
-        cls (type, optional): A custom JSON encoder class to serialize objects that aren't 
+        cls (type, optional): A custom JSON encoder class to serialize objects that aren't
                               natively serializable by the default `json` module.
 
     Returns:
         None
     """
-    with open(file, 'w', encoding='utf8') as f:
+    with open(file, "w", encoding="utf8") as f:
         json.dump(obj, f, indent=indent, ensure_ascii=ensure_ascii, cls=cls)
 
 
@@ -293,7 +297,7 @@ def load_yaml(file: str):
     """
     Loads and returns the contents of a YAML file.
 
-    This function reads the specified YAML file, parses its contents, and returns the resulting 
+    This function reads the specified YAML file, parses its contents, and returns the resulting
     Python object (usually a dictionary or a list).
 
     Parameters:
@@ -302,30 +306,32 @@ def load_yaml(file: str):
     Returns:
         The parsed contents of the YAML file, typically a dictionary or a list.
     """
-    with open(file, 'r', encoding='utf8') as f:
+    with open(file, "r", encoding="utf8") as f:
         data = yaml.safe_load(f)
     return data
 
 
-def save_yaml(obj, file: str, default_flow_style: bool = False, indent: int = 2) -> None:
+def save_yaml(
+    obj, file: str, default_flow_style: bool = False, indent: int = 2
+) -> None:
     """
     Saves a Python object to a YAML file.
 
-    This function serializes the given Python object (usually a dictionary or a list) 
+    This function serializes the given Python object (usually a dictionary or a list)
     into a YAML formatted string and writes it to the specified file.
 
     Parameters:
         obj: The Python object to be serialized and saved to a YAML file.
         file (str): The path to the file where the YAML data will be saved.
-        default_flow_style (bool, optional): If True, the YAML will use the block style. 
+        default_flow_style (bool, optional): If True, the YAML will use the block style.
                                              Defaults to False for a more human-readable format.
-        indent (int, optional): The number of spaces to use as indentation in the YAML file. 
+        indent (int, optional): The number of spaces to use as indentation in the YAML file.
                                 Defaults to 2.
 
     Returns:
         None
     """
-    with open(file, 'w', encoding='utf8') as f:
+    with open(file, "w", encoding="utf8") as f:
         yaml.dump(obj, f, default_flow_style=default_flow_style, indent=indent)
 
 
@@ -353,7 +359,9 @@ def recursively_find_file(filename: str, start_path: str = ".") -> List[str]:
     return matches
 
 
-def recursive_find_python_class(folder: str, class_name: str, current_module: str) -> object:
+def recursive_find_python_class(
+    folder: str, class_name: str, current_module: str
+) -> object:
     """
     Recursively searches for a Python class within a given folder and its subfolders.
 
@@ -371,9 +379,7 @@ def recursive_find_python_class(folder: str, class_name: str, current_module: st
     tr = None
     for importer, modname, ispkg in pkgutil.iter_modules([folder]):
         if not ispkg:
-            m = importlib.import_module(
-                current_module + "." + modname
-            )
+            m = importlib.import_module(current_module + "." + modname)
             if hasattr(m, class_name):
                 tr = getattr(m, class_name)
                 break
@@ -385,7 +391,7 @@ def recursive_find_python_class(folder: str, class_name: str, current_module: st
                 tr = recursive_find_python_class(
                     join(folder, modname),
                     class_name,
-                    current_module=next_current_module
+                    current_module=next_current_module,
                 )
             if tr is not None:
                 break

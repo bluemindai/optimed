@@ -2,8 +2,9 @@ from optimed.wrappers.calculations import (
     scipy_sum,
     scipy_label,
     scipy_minimum,
+    scipy_center_of_mass,
     scipy_binary_dilation,
-    scipy_distance_transform_edt
+    scipy_distance_transform_edt,
 )
 from optimed import _cupy_available
 from typing import Union
@@ -12,15 +13,12 @@ import skimage
 
 try:
     import cupy as cp
-    xp = cp
-except ImportError as exc:
-    xp = np
+except ImportError:
+    # Fallback to CPU versions
+    _cupy_available = None  # noqa
 
 
-def if_touches_border_3d(
-    mask: np.ndarray,
-    use_gpu: bool = True
-) -> bool:
+def if_touches_border_3d(mask: np.ndarray, use_gpu: bool = True) -> bool:
     """
     Check if the 3d mask touches any of the borders.
     If the mask touches any border, it's considered incomplete.
@@ -32,27 +30,21 @@ def if_touches_border_3d(
     Returns:
         bool: True if the mask touches any border, otherwise False.
     """
-    if not use_gpu or not _cupy_available:
+    if use_gpu and _cupy_available:
+        mask = cp.array(mask)
+    else:
         xp = np
 
-    mask = xp.array(mask)
-    if xp.any(mask[1, :, :]) or xp.any(mask[-2, :, :]):
-        return True
-    if xp.any(mask[:, 1, :]) or xp.any(mask[:, -2, :]):
-        return True
-    if xp.any(mask[:, :, 1]) or xp.any(mask[:, :, -2]):
-        return True
-    
-    if not isinstance(mask, np.ndarray):
-        mask = mask.get()
+    if mask.ndim != 3:
+        raise ValueError("Mask must be 3-dimensional.")
 
+    for axis in range(3):
+        if xp.any(mask.take(0, axis=axis)) or xp.any(mask.take(-1, axis=axis)):
+            return True
     return False
 
 
-def if_touches_border_2d(
-    mask: np.ndarray,
-    use_gpu: bool = True
-) -> bool:
+def if_touches_border_2d(mask: np.ndarray, use_gpu: bool = True) -> bool:
     """
     Check if the 2d mask touches any of the borders.
     If the mask touches any border, it's considered incomplete.
@@ -64,18 +56,21 @@ def if_touches_border_2d(
     Returns:
         bool: True if the mask touches any border, otherwise False.
     """
-    if not use_gpu or not _cupy_available:
+    if use_gpu and _cupy_available:
+        mask = cp.array(mask)
+    else:
         xp = np
 
-    mask = xp.array(mask)
-    if xp.any(mask[1, :]) or xp.any(mask[-2, :]):
-        return True
-    if xp.any(mask[:, 1]) or xp.any(mask[:, -2]):
-        return True
+    if mask.ndim != 2:
+        raise ValueError("Mask must be 2-dimensional.")
 
-    if not isinstance(mask, np.ndarray):
-        mask = mask.get()
-
+    if (
+        xp.any(mask[0, :])
+        or xp.any(mask[-1, :])
+        or xp.any(mask[:, 0])
+        or xp.any(mask[:, -1])
+    ):
+        return True
     return False
 
 
@@ -84,12 +79,12 @@ def find_component_by_centroid(
     target_centroid: list,
     num_components: int,
     atol: int = 3,
-    use_gpu: bool = True
+    use_gpu: bool = True,
 ) -> Union[int, None]:
     """
     Find a component in a labeled image based on its centroid coordinates.
 
-    This function searches through labeled components to find one whose centroid matches 
+    This function searches through labeled components to find one whose centroid matches
     the target centroid coordinates within a small tolerance.
 
     Parameters:
@@ -107,38 +102,30 @@ def find_component_by_centroid(
     The function uses a tolerance when comparing centroids to allow for small variations
     in the exact centroid location.
     """
-
-    if not use_gpu or not _cupy_available:
-        xp = np
-
-    for comp_idx in range(1, num_components + 1):
-        comp_mask = xp.array(components == comp_idx)
-        if xp.any(comp_mask):
-            coords = xp.argwhere(comp_mask)
-            center = coords.mean(axis=0).astype(int)
-            if xp.allclose(center, target_centroid, atol=atol):
-                return comp_idx
+    centroids = scipy_center_of_mass(
+        components > 0,
+        labels=components,
+        index=range(1, num_components + 1),
+        use_gpu=use_gpu,
+    )
+    for comp_idx, centroid in enumerate(centroids, start=1):
+        if np.allclose(centroid, target_centroid, atol=atol):
+            return comp_idx
     return None
 
 
 def find_component_by_point(
-    components: np.ndarray,
-    target_point: list,
-    num_components: int,
-    atol: int = 3,
-    use_gpu: bool = True
+    components: np.ndarray, target_point: list, use_gpu: bool = True
 ) -> Union[int, None]:
     """
     Find a component in a labeled image based on a point within the component.
 
-    This function searches through labeled components to find one that contains 
+    This function searches through labeled components to find one that contains
     the target point coordinates within a small tolerance.
 
     Parameters:
         components (ndarray): Labeled image array where each unique value represents a different component.
         target_point (array-like): Target point coordinates to match against.
-        num_components (int): Number of unique components in labeled image (excluding background).
-        atol (int, optional): Absolute tolerance for point matching, by default 3.
         use_gpu (bool, optional): Whether to use GPU acceleration if available, by default True.
 
     Returns:
@@ -149,19 +136,13 @@ def find_component_by_point(
     The function uses a tolerance when comparing points to allow for small variations
     in the exact point location.
     """
+    if use_gpu and _cupy_available:
+        components = cp.array(components)
 
-    if not use_gpu or not _cupy_available:
-        xp = np
-
-    target_point = xp.array(target_point)
-    for comp_idx in range(1, num_components + 1):
-        comp_mask = xp.array(components == comp_idx)
-        if xp.any(comp_mask):
-            coords = xp.argwhere(comp_mask)
-            # Compute Euclidean distances from each coordinate to the target point.
-            distances = xp.linalg.norm(coords - target_point, axis=1)
-            if xp.any(distances <= atol):
-                return comp_idx
+    target_point = tuple(int(coord) for coord in target_point)
+    label_at_point = components[target_point]
+    if label_at_point != 0:
+        return label_at_point
     return None
 
 
@@ -169,7 +150,7 @@ def delete_small_segments(
     binary_mask: np.ndarray,
     interval: list = [10, np.inf],
     use_gpu: bool = True,
-    verbose: bool = False
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Find blobs/clusters of same label. Remove all blobs which have a size which is outside of the interval.
@@ -183,36 +164,32 @@ def delete_small_segments(
         np.ndarray: Filtered blobs.
     """
     if verbose:
-        print(f"[postprocessing] deleting small components")
+        print("[postprocessing] deleting small components")
 
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
-    mask, number_of_blobs = scipy_label(xp.array(binary_mask), use_gpu=use_gpu)
-    mask = xp.array(mask)
+    labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
+    if num_labels == 0:
+        return binary_mask
 
-    if verbose: 
-        print('[delete_small_segments] Number of blobs before: ' + str(number_of_blobs))
-
-    counts = xp.bincount(mask.flatten())  # number of pixels in each blob
-
-    # If only one blob (only background) abort because nothing to remove
-    if len(counts) <= 1: return binary_mask
-
-    remove = xp.where((counts <= interval[0]) | (counts > interval[1]), True, False)
-    remove_idx = xp.nonzero(remove)[0]
-    mask[xp.isin(mask, remove_idx)] = 0
-    mask[mask > 0] = 1  # set everything else to 1
+    counts = xp.bincount(labeled.ravel())
+    remove_labels = xp.where((counts <= interval[0]) | (counts > interval[1]))[0]
 
     if verbose:
-        print(f"\t[delete_small_segments] counts: {sorted(counts)[::-1]}")
-        _, number_of_blobs_after = scipy_label(mask, use_gpu=use_gpu)
-        print('[delete_small_segments] Number of blobs after: ' + str(number_of_blobs_after))
+        print(f"[delete_small_segments] Number of blobs before: {num_labels}")
+        print(f"[delete_small_segments] Removing labels: {remove_labels}")
 
-    if not isinstance(mask, np.ndarray):
-        mask = mask.get()
+    binary_mask[xp.isin(labeled, remove_labels)] = 0
+    binary_mask = binary_mask.astype(bool)
 
-    return mask
+    if not isinstance(binary_mask, np.ndarray):
+        binary_mask = binary_mask.get()
+
+    return binary_mask
 
 
 def delete_segments_disconnected_from_point(
@@ -220,7 +197,7 @@ def delete_segments_disconnected_from_point(
     target_point: list,
     size_threshold: int = 10,
     use_gpu: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Deletes all segments from binary_mask that are not connected to the specified target_point.
@@ -240,45 +217,38 @@ def delete_segments_disconnected_from_point(
     """
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
-    binary_mask_xp = xp.array(binary_mask)
+    labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
+    if num_labels == 0:
+        return binary_mask
 
-    connected_components, num_components = scipy_label(binary_mask_xp, use_gpu=use_gpu)
-    if verbose:
-        print(f"[delete_segments_disconnected_from_point] Found {num_components} components in binary_mask.")
-
-    # Determine which component contains the target_point
-    component_label = find_component_by_point(
-        connected_components, target_point, num_components, atol=3, use_gpu=use_gpu
-    )
-    if component_label is None:
-        # If the point is not in any segment, return an empty mask
-        if verbose:
-            print("[delete_segments_disconnected_from_point] No component contains the target point. Returning empty mask.")
-        return np.zeros_like(binary_mask)
-
-    if verbose:
-        print(f"[delete_segments_disconnected_from_point] Target point is in component {component_label}.")
-
-    # Form a mask with only this component
-    keep_mask = (connected_components == component_label)
-
-    main_component_size = xp.count_nonzero(keep_mask)
-    if main_component_size < size_threshold:
+    target_point = tuple(int(coord) for coord in target_point)
+    label_at_point = labeled[target_point]
+    if label_at_point == 0:
         if verbose:
             print(
-                f"[delete_segments_disconnected_from_point] Main component (label {component_label}) is too small "
-                f"(size: {main_component_size}). Removing it."
+                "[delete_segments_disconnected_from_point] Target point is not in any segment."
             )
-        # If too small, return an empty mask
-        result = xp.zeros_like(binary_mask_xp)
-    else:
-        result = xp.where(keep_mask, 1, 0)
+        return xp.zeros_like(binary_mask)
 
-    if not isinstance(result, np.ndarray):
-        result = result.get()
+    keep_mask = labeled == label_at_point
+    component_size = xp.count_nonzero(keep_mask)
+    if component_size < size_threshold:
+        if verbose:
+            print(
+                f"[delete_segments_disconnected_from_point] Component size {component_size} < {size_threshold}."
+            )
+        return xp.zeros_like(binary_mask)
 
-    return result
+    binary_mask = keep_mask.astype(binary_mask.dtype)
+
+    if not isinstance(binary_mask, np.ndarray):
+        binary_mask = binary_mask.get()
+
+    return binary_mask
 
 
 def delete_segments_disconnected_from_parent(
@@ -286,7 +256,7 @@ def delete_segments_disconnected_from_parent(
     parent_mask: np.ndarray,
     size_threshold: int = 10,
     use_gpu: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Remove segments (in binary_mask) corresponding to connected regions in binary_mask
@@ -302,56 +272,44 @@ def delete_segments_disconnected_from_parent(
     Returns:
         np.ndarray: Updated binary_mask with disconnected segments removed.
     """
-
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
+        parent_mask = cp.array(parent_mask)
 
-    if not xp.any(binary_mask):
+    if not xp.any(binary_mask) or not xp.any(parent_mask):
+        return xp.zeros_like(binary_mask)
+
+    labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
+    if num_labels == 0:
         return binary_mask
-    
-    if not xp.any(parent_mask):
-        return binary_mask
 
-    binary_mask = xp.array(binary_mask)
-    parent_mask = xp.array(parent_mask)
-
-    if verbose:
-        print("[postprocessing] Deleting disconnected components...")
-
-    connected_components, num_components = scipy_label(binary_mask, use_gpu=use_gpu)
-    if verbose:
-        print(f"\tFound {num_components} components.")
-
-    comp_sizes = xp.bincount(connected_components.ravel())
-
-    parent_intersections = scipy_sum(
-        parent_mask, labels=connected_components,
-        index=xp.arange(comp_sizes.size), use_gpu=use_gpu
+    intersections = scipy_sum(
+        parent_mask, labels=labeled, index=xp.arange(1, num_labels + 1), use_gpu=use_gpu
     )
-
-    # Analyze only components with label 1..num_components (skip background)
-    comp_labels = xp.arange(1, num_components + 1)
-    comp_sizes = comp_sizes[1:]
-    parent_intersections = parent_intersections[1:]
-
-    # Conditions for removal:
-    # 1) No intersection with parent (parent_intersections == 0)
-    # 2) Intersection exists, but component size is below size_threshold
-    remove_labels = comp_labels[
-        (parent_intersections == 0) |
-        ((parent_intersections > 0) & (comp_sizes < size_threshold))
-    ]
+    sizes = xp.bincount(labeled.ravel())[1:]
+    remove_labels = (
+        xp.where(
+            (intersections == 0) | ((intersections > 0) & (sizes < size_threshold))
+        )[0]
+        + 1
+    )
 
     if verbose:
         for lbl in remove_labels:
             idx = lbl - 1
-            if parent_intersections[idx] == 0:
-                print(f"\tDeleting component {lbl} (size={comp_sizes[idx]}) - no intersection with parent.")
+            if intersections[idx] == 0:
+                print(
+                    f"[delete_segments_disconnected_from_parent] Deleting component {lbl} (size={sizes[idx]}) - no intersection."
+                )
             else:
-                print(f"\tDeleting small component {lbl} (size={comp_sizes[idx]}) - below threshold.")
+                print(
+                    f"[delete_segments_disconnected_from_parent] Deleting small component {lbl} (size={sizes[idx]})."
+                )
 
-    mask_to_remove = xp.isin(connected_components, remove_labels)
-    binary_mask[mask_to_remove] = 0
+    binary_mask[xp.isin(labeled, remove_labels)] = 0
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()
@@ -365,8 +323,9 @@ def delete_segments_distant_from_point(
     distance_threshold: int = 5,
     size_threshold: int = 10,
     keep_large: bool = True,
+    large_threshold: int = 100000,
     use_gpu: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Delete segments from binary_mask that are distant from the target point.
@@ -379,6 +338,7 @@ def delete_segments_distant_from_point(
         distance_threshold (int, optional): Maximum allowable minimum distance to the target point.
         size_threshold (int, optional): Minimum size of a segment to retain if it is close.
         keep_large (bool, optional): If True, do not delete large components even if they are distant.
+        large_threshold (int, optional): Size threshold for large components.
         use_gpu (bool, optional): Whether to use GPU acceleration if available.
         verbose (bool, optional): Whether to print detailed progress information.
 
@@ -387,60 +347,47 @@ def delete_segments_distant_from_point(
     """
     if not use_gpu or not _cupy_available:
         xp = np
-
-    binary_mask = xp.array(binary_mask)
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
     point_mask = xp.zeros_like(binary_mask, dtype=bool)
-
-    point_coords = tuple(int(coord) for coord in target_point)
-    point_mask[point_coords] = True
-
-    if verbose:
-        print("[delete_distant_point_segments] Created target point mask.")
-
+    point_mask[tuple(int(coord) for coord in target_point)] = True
     point_mask = scipy_binary_dilation(point_mask, iterations=1, use_gpu=use_gpu)
-    point_mask = xp.array(point_mask)
-
     dt = scipy_distance_transform_edt(~point_mask, use_gpu=use_gpu)
-    dt = xp.array(dt)
 
-    connected_components, num_components = scipy_label(binary_mask, use_gpu=use_gpu)
-    if verbose:
-        print(f"[delete_distant_point_segments] Found {num_components} components.")
+    labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
+    if num_labels == 0:
+        return binary_mask
 
-    # Compute component sizes (ignore background, label=0)
-    sizes = xp.bincount(connected_components.ravel())
-    comp_labels = xp.arange(1, num_components + 1)
-    comp_sizes = sizes[1:]
-
-    # Compute the minimum distance for each component to the target point
-    min_dists = scipy_minimum(dt, labels=connected_components, index=comp_labels, use_gpu=use_gpu)
-    min_dists = xp.array(min_dists)
-
-    large_threshold = 100000
-
-    if keep_large:
-        remove_far = (min_dists > distance_threshold) & (comp_sizes <= large_threshold)
-    else:
-        remove_far = (min_dists > distance_threshold)
-    remove_small = (min_dists <= distance_threshold) & (comp_sizes < size_threshold)
-
-    remove_mask = remove_far | remove_small
-    remove_labels = comp_labels[remove_mask]
+    min_dists = scipy_minimum(
+        dt, labels=labeled, index=xp.arange(1, num_labels + 1), use_gpu=use_gpu
+    )
+    sizes = xp.bincount(labeled.ravel())[1:]
+    remove_labels = (
+        xp.where(
+            (
+                (min_dists > distance_threshold)
+                & (sizes <= large_threshold if keep_large else True)
+            )
+            | ((min_dists <= distance_threshold) & (sizes < size_threshold))
+        )[0]
+        + 1
+    )
 
     if verbose:
-        for i, label_val in enumerate(comp_labels):
-            if remove_mask[i]:
-                if min_dists[i] > distance_threshold:
-                    print(
-                        f"[delete_distant_point_segments] Deleting component {label_val} (size: {comp_sizes[i]}) "
-                        f"because its minimum distance to the target point is {min_dists[i]:.2f} (> {distance_threshold})."
-                    )
-                else:
-                    print(f"[delete_distant_point_segments] Deleting small component {label_val} (size: {comp_sizes[i]}).")
+        for lbl in remove_labels:
+            idx = lbl - 1
+            if min_dists[idx] > distance_threshold:
+                print(
+                    f"[delete_distant_point_segments] Deleting component {lbl} (size: {sizes[idx]}, dist: {min_dists[idx]:.2f})."
+                )
+            else:
+                print(
+                    f"[delete_distant_point_segments] Deleting small component {lbl} (size: {sizes[idx]})."
+                )
 
-    if remove_labels.size > 0:
-        binary_mask[xp.isin(connected_components, remove_labels)] = 0
+    binary_mask[xp.isin(labeled, remove_labels)] = 0
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()
@@ -454,7 +401,7 @@ def delete_nearby_segments_with_buffer(
     distance_threshold: int = 5,
     size_threshold: int = 10,
     use_gpu: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Delete segments that are too close to the main label based on distance threshold.
@@ -470,7 +417,8 @@ def delete_nearby_segments_with_buffer(
     Returns:
         np.ndarray: Binary mask with nearby segments removed.
     """
-    if verbose: print(f"[postprocessing] deleting close components")
+    if verbose:
+        print("[postprocessing] deleting close components")
 
     if not use_gpu or not _cupy_available:
         xp = np
@@ -481,7 +429,9 @@ def delete_nearby_segments_with_buffer(
     if not xp.any(parent_mask):
         return binary_mask
 
-    connected_components, num_components = scipy_label(xp.array(binary_mask), use_gpu=use_gpu)
+    connected_components, num_components = scipy_label(
+        xp.array(binary_mask), use_gpu=use_gpu
+    )
     for component_idx in range(1, num_components + 1):  # Skip background label 0
         component_mask = connected_components == component_idx
         component_size = xp.count_nonzero(xp.array(component_mask))
@@ -493,17 +443,22 @@ def delete_nearby_segments_with_buffer(
             component_mask = component_mask.get()
 
         buffered_mask = skimage.segmentation.expand_labels(
-            component_mask, 
-            distance_threshold
+            component_mask, distance_threshold
         )
 
         if xp.sum(xp.array(buffered_mask) * xp.array(parent_mask)) > 0:
             binary_mask[component_mask] = 0
-            if verbose: print(f"\t\tDeleting component {component_idx} due to proximity to parent component.")
+            if verbose:
+                print(
+                    f"\t\tDeleting component {component_idx} due to proximity to parent component."
+                )
             continue
         if component_size < size_threshold:
             binary_mask[component_mask] = 0
-            if verbose: print(f"\t\tDeleting small component {component_idx} (size: {component_size}).")
+            if verbose:
+                print(
+                    f"\t\tDeleting small component {component_idx} (size: {component_size})."
+                )
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()
@@ -515,54 +470,48 @@ def delete_touching_border_segments(
     binary_mask: np.ndarray,
     size_threshold: int = 100,
     use_gpu: bool = True,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> np.ndarray:
     """
     Delete segments touching the border of the image that are smaller than a specified size threshold.
 
     Parameters:
         binary_mask (np.ndarray): Binary mask containing all segments.
-        size_threshold (int, optional): Minimum size for segments to be retained.
+        size_threshold (int, optional): Minimum size for segments to be retained. If -1, threshold is ignored.
         use_gpu (bool, optional): If True, uses GPU acceleration.
         verbose (bool, optional): If True, outputs detailed processing information.
 
     Returns:
         np.ndarray: Modified binary mask with small border-touching segments removed.
 
-    The function identifies connected components in the binary_mask, checks whether they touch 
-    the image border, and then removes them only if their size is below the size_threshold. 
+    The function identifies connected components in the binary_mask, checks whether they touch
+    the image border, and then removes them only if their size is below the size_threshold.
     Components that are larger than or equal to size_threshold are preserved even if they touch the borders.
     """
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
-    if verbose:
-        print(f"[postprocessing] Deleting border-touching segments smaller than {size_threshold}...")
+    labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
+    if num_labels == 0:
+        return binary_mask
 
-    connected_components, num_components = scipy_label(xp.array(binary_mask), use_gpu=use_gpu)
-
-    for component_idx in range(1, num_components + 1):
-        component_mask = (connected_components == component_idx)
-        component_size = xp.count_nonzero(component_mask)
-
-        if verbose:
-            print(f"\tAnalyzing component {component_idx}/{num_components} (size: {component_size})...")
-
-        if not isinstance(component_mask, np.ndarray):
-            component_mask = component_mask.get()
-
-        if if_touches_border_3d(component_mask):
-            # Remove the component only if it is smaller than the threshold.
-            if component_size < size_threshold:
-                binary_mask[component_mask] = 0
-                if verbose:
-                    print(f"\tRemoving border-touching component {component_idx} (size: {component_size}).")
-            else:
-                if verbose:
-                    print(
-                        f"\tComponent {component_idx} touches the border "
-                        f"but is kept (size: {component_size} >= {size_threshold})."
-                    )
+    for lbl in range(1, num_labels + 1):
+        comp_mask = labeled == lbl
+        touches_border = (
+            if_touches_border_3d(comp_mask, use_gpu)
+            if binary_mask.ndim == 3
+            else if_touches_border_2d(comp_mask, use_gpu)
+        )
+        comp_size = xp.count_nonzero(comp_mask)
+        if touches_border and (size_threshold == -1 or comp_size < size_threshold):
+            binary_mask[comp_mask] = 0
+            if verbose:
+                print(
+                    f"[delete_touching_border_segments] Deleting border-touching component {lbl} (size: {comp_size})."
+                )
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()
@@ -571,9 +520,7 @@ def delete_touching_border_segments(
 
 
 def fill_holes_2d(
-    binary_mask: np.ndarray,
-    max_hole_size: int = 100,
-    use_gpu: bool = True
+    binary_mask: np.ndarray, max_hole_size: int = 100, use_gpu: bool = True
 ) -> np.ndarray:
     """
     Fill small holes in a 2D binary mask.
@@ -586,6 +533,9 @@ def fill_holes_2d(
     Returns:
         np.ndarray: The 2D binary mask with small holes filled.
     """
+    if binary_mask.ndim != 2:
+        raise ValueError("Mask must be 2-dimensional.")
+
     if not use_gpu or not _cupy_available:
         xp = np
 
@@ -601,9 +551,7 @@ def fill_holes_2d(
 
 
 def fill_holes_3d(
-    binary_mask: np.ndarray,
-    max_hole_size: int = 100,
-    use_gpu: bool = True
+    binary_mask: np.ndarray, max_hole_size: int = 100, use_gpu: bool = True
 ) -> np.ndarray:
     """
     Fill small holes in a 3D binary mask.
@@ -616,10 +564,16 @@ def fill_holes_3d(
     Returns:
         np.ndarray: The 3D binary mask with small holes filled.
     """
+    if binary_mask.ndim != 3:
+        raise ValueError("Mask must be 3-dimensional.")
+
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
-    holes_labeled, num_labels = scipy_label(~xp.array(binary_mask), use_gpu=use_gpu)
+    holes_labeled, num_labels = scipy_label(~binary_mask, use_gpu=use_gpu)
     counts = xp.bincount(holes_labeled.ravel())
     remove_labels = xp.where(counts <= max_hole_size)[0]
     binary_mask[xp.isin(holes_labeled, remove_labels)] = 1

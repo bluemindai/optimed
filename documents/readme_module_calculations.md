@@ -54,7 +54,7 @@ Computes the sum of values over regions specified by labels.
 
 ---
 
-### 8. `filter_mask(mask: np.ndarray, lbls: list, use_gpu: bool = True, verbose: bool = True) -> np.ndarray`
+### 8. `filter_mask(mask: np.ndarray, labels: list, use_gpu: bool = True) -> np.ndarray`
 Filters the input mask so that only specified label values remain.
 - Additional Info: Filter mask operation retains only the designated labels, removing unwanted regions.
 - **Returns**: The filtered mask.

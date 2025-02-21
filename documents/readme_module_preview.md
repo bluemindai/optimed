@@ -5,7 +5,7 @@ This module offers functions to visualize 3D medical image segmentations. It con
 
 ## Functions
 
-### 1. `preview_3d_image(input_path: Union[str, nib.Nifti1Image], output: str, segmentation_dict: Dict[int, Dict[str, Any]], view_direction: str = 'A', smoothing: int = 20, shading: int = 20, background_color: Tuple[int,int,int] = (0,0,0), window_size: Tuple[int,int] = (800,800)) -> None`
+### 1. `preview_3d_image(input_path: Union[str, nib.Nifti1Image], output: str, segmentation_dict: Dict[int, Dict[str, Any]], view_direction: Tuple[str,list], smoothing: int = 20, shading: int = 20, background_color: Tuple[int,int,int] = (0,0,0), window_size: Tuple[int,int] = (800,800)) -> None`
 Loads a NIfTI image, converts it to VTK format, applies segmentation overlays, and saves a 3D preview image.
 - Additional Info: Integrates file checking, orientation conversion, and VTK rendering to produce a comprehensive preview.
 - **Returns**: None.

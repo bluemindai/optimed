@@ -40,7 +40,7 @@ Converts a MHA file to NIfTI format.
 
 ---
 
-### 6. `convert_nifti_to_nrrd(input_nifti_filename: str, output_seg_filename: str, segment_metadata: bool = None, verbose: bool = True) -> None`
+### 6. `convert_nifti_to_nrrd(input_nifti_filename: str, output_seg_filename: str, segment_metadata: list = None, verbose: bool = True) -> None`
 Converts a plain NIfTI segmentation (label map) into a Slicer segmentation (NRRD) file with metadata.
 - Additional Info:
     - Reads the NIfTI segmentation and optionally auto-generates segment metadata from unique labels (excluding background) if none are provided.

@@ -10,9 +10,7 @@ import nrrd
 import gzip
 
 
-def convert_sitk_to_nibabel(
-    sitk_image: sitk.Image
-) -> nib.Nifti1Image:
+def convert_sitk_to_nibabel(sitk_image: sitk.Image) -> nib.Nifti1Image:
     """
     Convert a SimpleITK image to a NIfTI image.
 
@@ -22,7 +20,7 @@ def convert_sitk_to_nibabel(
     Returns:
         nib.Nifti1Image: The NIfTI image object.
     """
-    assert isinstance(sitk_image, sitk.Image), 'Input must be a SimpleITK image.'
+    assert isinstance(sitk_image, sitk.Image), "Input must be a SimpleITK image."
 
     data = sitk.GetArrayFromImage(sitk_image)
     origin = np.array(sitk_image.GetOrigin())
@@ -37,9 +35,7 @@ def convert_sitk_to_nibabel(
     return image
 
 
-def convert_nibabel_to_sitk(
-    nibabel_image: nib.Nifti1Image
-) -> sitk.Image:
+def convert_nibabel_to_sitk(nibabel_image: nib.Nifti1Image) -> sitk.Image:
     """
     Convert a NIfTI image to a SimpleITK image.
 
@@ -49,8 +45,8 @@ def convert_nibabel_to_sitk(
     Returns:
         sitk.Image: The SimpleITK image object.
     """
-    assert isinstance(nibabel_image, nib.Nifti1Image), 'Input must be a NIfTI image.'
-    
+    assert isinstance(nibabel_image, nib.Nifti1Image), "Input must be a NIfTI image."
+
     data = nibabel_image.get_fdata()
     affine = nibabel_image.affine
 
@@ -62,14 +58,14 @@ def convert_nibabel_to_sitk(
     image.SetSpacing(tuple(spacing))
 
     return image
-        
+
 
 def convert_dcm_to_nifti(
     dicom_path: str,
     nifti_file: str,
     permute_axes: bool = False,
     return_object: bool = True,
-    return_type: str = 'nibabel'
+    return_type: str = "nibabel",
 ) -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Converts a DICOM series to a NIfTI file.
@@ -80,12 +76,12 @@ def convert_dcm_to_nifti(
         permute_axes (bool): If True, permute axes of the data.
         return_object (bool): If True, return the NIfTI object
         return_type (str): The return type of the function.
-    
+
     Returns:
         nib.Nifti1Image: The SimpleITK image object.
     """
     assert exists(dicom_path), f"Input file not found: {dicom_path}"
-    assert return_type in ['nibabel', 'sitk'], 'Invalid return type.'
+    assert return_type in ["nibabel", "sitk"], "Invalid return type."
 
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(dicom_path)
@@ -104,7 +100,7 @@ def convert_nrrd_to_nifti(
     nrrd_file: Union[str, object],
     nifti_file: str,
     return_object: bool = True,
-    return_type: str = 'nibabel'
+    return_type: str = "nibabel",
 ) -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Convert a NRRD file to NIfTI format.
@@ -119,7 +115,7 @@ def convert_nrrd_to_nifti(
         nib.Nifti1Image: The NIfTI image object.
     """
     assert exists(nrrd_file), f"Input file not found: {nrrd_file}"
-    assert return_type in ['nibabel', 'sitk'], 'Invalid return type.'
+    assert return_type in ["nibabel", "sitk"], "Invalid return type."
 
     if isinstance(nrrd_file, str):
         data, header = nrrd.read(nrrd_file)
@@ -127,15 +123,15 @@ def convert_nrrd_to_nifti(
         data, header = nrrd_file
 
     # Extract the affine transformation matrix if available
-    if 'space directions' in header and 'space origin' in header:
+    if "space directions" in header and "space origin" in header:
         affine = np.eye(4)
-        affine[:3, :3] = header['space directions']
-        affine[:3, 3] = header['space origin']
-        
+        affine[:3, :3] = header["space directions"]
+        affine[:3, 3] = header["space origin"]
+
         # Check the space field for coordinate system information
-        if 'space' in header:
-            space = header['space'].lower()
-            if 'left-posterior-superior' in space:
+        if "space" in header:
+            space = header["space"].lower()
+            if "left-posterior-superior" in space:
                 # NIfTI uses RAS (Right-Anterior-Superior)
                 # Flip the first two axes
                 affine[0, :] *= -1
@@ -161,7 +157,7 @@ def conver_mha_to_nifti(
     mha_file: Union[str, object],
     nifti_file: str,
     return_object: bool = True,
-    return_type: str = 'nibabel'
+    return_type: str = "nibabel",
 ) -> Union[nib.Nifti1Image, sitk.Image]:
     """
     Convert a MHA file to NIfTI format.
@@ -176,7 +172,7 @@ def conver_mha_to_nifti(
         nib.Nifti1Image: The SimpleITK image object.
     """
     assert exists(mha_file), f"Input file not found: {mha_file}"
-    assert return_type in ['nibabel', 'sitk'], 'Invalid return type.'
+    assert return_type in ["nibabel", "sitk"], "Invalid return type."
 
     if isinstance(mha_file, str):
         image = sitk.ReadImage(mha_file)
@@ -192,13 +188,13 @@ def conver_mha_to_nifti(
 def convert_nifti_to_nrrd(
     input_nifti_filename: str,
     output_seg_filename: str,
-    segment_metadata: bool=None,
-    verbose=True
+    segment_metadata: list = None,
+    verbose=True,
 ) -> None:
     """
     Convert a plain NIfTI segmentation (label map) to a Slicer segmentation (.seg.nrrd)
     file with metadata. Optionally, provide segment metadata as a list of dicts.
-    
+
     Parameters:
         input_nifti_filename (str):
             Path to the input NIfTI file (e.g., 'aorta.nii.gz').
@@ -211,32 +207,42 @@ def convert_nifti_to_nrrd(
                 - Optionally "color": list of 3 floats [R, G, B]. Values can be in the range 0-1 or 0-255.
                 - Optionally "terminology": dict with further description.
             If not provided, metadata is auto-generated from the unique labels in the image.
-        return_object (bool, optional):
-            If True, return the segmentation object as a dictionary.
         verbose (bool, optional):
             If True, print debug information.
     """
     assert exists(input_nifti_filename), f"Input file not found: {input_nifti_filename}"
-    assert input_nifti_filename.endswith(".nii") or input_nifti_filename.endswith(".nii.gz"), \
-        "Input file must be a NIfTI file with .nii or .nii.gz extension."
-    assert output_seg_filename.endswith(".seg.nrrd"), \
-        "Output file must be a Slicer segmentation file with .seg.nrrd extension."
+    assert input_nifti_filename.endswith(".nii") or input_nifti_filename.endswith(
+        ".nii.gz"
+    ), "Input file must be a NIfTI file with .nii or .nii.gz extension."
+    assert output_seg_filename.endswith(
+        ".seg.nrrd"
+    ), "Output file must be a Slicer segmentation file with .seg.nrrd extension."
 
     if segment_metadata is not None and not isinstance(segment_metadata, list):
-        raise ValueError("segment_metadata must be a list of dictionaries (example: [{'labelValue': 1, 'name': 'Segment 1'}])")
+        raise ValueError(
+            "segment_metadata must be a list of dictionaries (example: [{'labelValue': 1, 'name': 'Segment 1'}])"
+        )
     if segment_metadata:
         for seg in segment_metadata:
             if not isinstance(seg, dict):
                 raise ValueError("Each segment metadata must be a dictionary.")
             if "labelValue" not in seg or "name" not in seg:
-                raise ValueError("Each segment metadata dictionary must have 'labelValue' and 'name' keys.")
+                raise ValueError(
+                    "Each segment metadata dictionary must have 'labelValue' and 'name' keys."
+                )
             if not isinstance(seg["labelValue"], int):
-                raise ValueError("Each segment metadata 'labelValue' must be an integer.")
+                raise ValueError(
+                    "Each segment metadata 'labelValue' must be an integer."
+                )
             if "color" in seg:
                 if not isinstance(seg["color"], list):
-                    raise ValueError("Segment metadata 'color' must be a list of 3 floats.")
+                    raise ValueError(
+                        "Segment metadata 'color' must be a list of 3 floats."
+                    )
                 if len(seg["color"]) != 3:
-                    raise ValueError("Segment metadata 'color' must be a list of 3 floats.")
+                    raise ValueError(
+                        "Segment metadata 'color' must be a list of 3 floats."
+                    )
                 # Adapt color if values appear to be in the 0-255 range
                 if any(c > 1 for c in seg["color"]):
                     seg["color"] = [round(c / 255.0, 2) for c in seg["color"]]
@@ -252,7 +258,7 @@ def convert_nifti_to_nrrd(
         """
         with open(filename, "rb") as f:
             magic = f.read(2)
-        if magic == b'\x1f\x8b':  # gzip magic number
+        if magic == b"\x1f\x8b":  # gzip magic number
             open_func = gzip.open
         else:
             open_func = open
@@ -266,7 +272,7 @@ def convert_nifti_to_nrrd(
         return header_lines
 
     segmentation = slicerio.read_segmentation(input_nifti_filename)
-    
+
     # If no metadata provided, auto-generate it from the image labels (except background)
     if segment_metadata is None:
         img = sitk.ReadImage(input_nifti_filename)
@@ -274,33 +280,34 @@ def convert_nifti_to_nrrd(
         unique_vals = np.unique(arr)
         if verbose:
             print("Unique label values in the input image:", unique_vals)
-        
+
         segment_metadata = []
         for label in unique_vals:
             if label == 0:
                 continue  # skip background
-            segment_metadata.append({
-                "labelValue": int(label),
-                "name": f"Segment {label}",
-                "color": _random_color()
-            })
+            segment_metadata.append(
+                {
+                    "labelValue": int(label),
+                    "name": f"Segment {label}",
+                    "color": _random_color(),
+                }
+            )
     else:
         # Ensure every segment has a "color" key; if missing, assign a random color
         for seg in segment_metadata:
             if "color" not in seg:
                 seg["color"] = _random_color()
-    
+
     # Assign metadata to the segmentation dictionary
     segmentation["segments"] = segment_metadata
 
     slicerio.write_segmentation(output_seg_filename, segmentation)
     if verbose:
         print("Conversion complete. Wrote segmentation to:", output_seg_filename)
-    
+
     # Debug: Print header of the segmentation file
-    header_lines = _read_nrrd_header(output_seg_filename)
     if verbose:
+        header_lines = _read_nrrd_header(output_seg_filename)
         print("Header of the segmentation file:")
-    for line in header_lines:
-        if verbose:
+        for line in header_lines:
             print(line)

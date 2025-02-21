@@ -13,6 +13,10 @@ The `wrappers` module is a collection of wrapper functions built around core lib
    Wrappers around `nibabel` for working with NIfTI image files.  
    [Read the documentation](readme_module_nifti.md)
 
+2. **NRRD Wrappers**
+   Wrappers around `pynrrd` and `slicerio` for working with NRRD image files.  
+   [Read the documentation](readme_module_nrrd.md)
+
 2. **Calculations Wrappers**  
    Wrappers around `scipy` for enhanced array operations and data manipulation.  
    [Read the documentation](readme_module_calculations.md)

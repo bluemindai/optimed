@@ -17,7 +17,7 @@ def change_spacing(
     dtype: np.dtype = None,
     remove_negative: bool = False,
     force_affine: np.ndarray = None,
-    use_gpu: bool = True
+    use_gpu: bool = True,
 ) -> nib.Nifti1Image:
     """
     Resample a NIfTI image to a new spacing or target shape.
@@ -44,17 +44,24 @@ def change_spacing(
         img_spacing = img_spacing[:3]  # for 4D images only use spacing of first 3 dims
 
     if type(new_spacing) is float:
-        new_spacing = [new_spacing, ] * 3   # for 3D and 4D
+        new_spacing = [
+            new_spacing,
+        ] * 3  # for 3D and 4D
     new_spacing = np.array(new_spacing)
 
     if len(old_shape) == 2:
-        img_spacing = np.array(list(img_spacing) + [new_spacing[2],])
+        img_spacing = np.array(
+            list(img_spacing)
+            + [
+                new_spacing[2],
+            ]
+        )
 
     if target_shape is not None:
         # Find the right zoom to exactly reach the target_shape.
         # We also have to adapt the spacing to this new zoom.
-        zoom = np.array(target_shape) / old_shape  
-        new_spacing = img_spacing / zoom  
+        zoom = np.array(target_shape) / old_shape
+        new_spacing = img_spacing / zoom
     else:
         zoom = img_spacing / new_spacing
 
@@ -84,19 +91,13 @@ def change_spacing(
 
     if (_cupy_available and _cucim_available) and use_gpu:
         new_data = resample_img_cucim(
-            data, 
-            zoom=zoom, 
-            order=order, 
-            nr_cpus=nr_cpus
+            data, zoom=zoom, order=order, nr_cpus=nr_cpus
         )  # gpu resampling
     else:
         new_data = resample_img(
-            data, 
-            zoom=zoom, 
-            order=order, 
-            nr_cpus=nr_cpus
+            data, zoom=zoom, order=order, nr_cpus=nr_cpus
         )  # cpu resampling
-        
+
     if remove_negative:
         new_data[new_data < 1e-4] = 0
 
@@ -112,10 +113,7 @@ def change_spacing(
     return nib.Nifti1Image(new_data, affine=new_affine, header=new_header)
 
 
-def change_spacing_of_affine(
-    affine: np.ndarray,
-    zoom: float = 0.5
-) -> np.ndarray:
+def change_spacing_of_affine(affine: np.ndarray, zoom: float = 0.5) -> np.ndarray:
     """
     Change the spacing of an affine matrix.
 
@@ -133,10 +131,7 @@ def change_spacing_of_affine(
 
 
 def resample_img(
-    img: np.ndarray,
-    zoom: float = 0.5,
-    order: int = 0,
-    nr_cpus: int = -1
+    img: np.ndarray, zoom: float = 0.5, order: int = 0, nr_cpus: int = -1
 ) -> np.ndarray:
     """
     Resize a numpy image array to a new size by resampling.
@@ -153,6 +148,7 @@ def resample_img(
     Notes:
     - Works for 2D, 3D, and 4D images.
     """
+
     def _process_gradient(grad_idx):
         return ndimage.zoom(img[:, :, :, grad_idx], zoom, order=order)
 
@@ -165,12 +161,16 @@ def resample_img(
         img = img[..., None]
 
     nr_cpus = psutil.cpu_count() if nr_cpus == -1 else nr_cpus
-    img_sm = Parallel(n_jobs=nr_cpus)(delayed(_process_gradient)(grad_idx) for grad_idx in range(img.shape[3]))
-    img_sm = np.array(img_sm).transpose(1, 2, 3, 0)  # grads channel was in front -> put to back
+    img_sm = Parallel(n_jobs=nr_cpus)(
+        delayed(_process_gradient)(grad_idx) for grad_idx in range(img.shape[3])
+    )
+    img_sm = np.array(img_sm).transpose(
+        1, 2, 3, 0
+    )  # grads channel was in front -> put to back
     if dim == 3:
-        img_sm = img_sm[:,:,:,0]
+        img_sm = img_sm[:, :, :, 0]
     if dim == 2:
-        img_sm = img_sm[:,:,0,0]
+        img_sm = img_sm[:, :, 0, 0]
     return img_sm
 
 
@@ -199,6 +199,10 @@ def resample_img_cucim(
 
     img = np.asarray(img)  # slow
     new_shape = (np.array(img.shape) * zoom).round().astype(np.int32)
-    resampled_img = resize(img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False)  # very fast
-    resampled_img = np.asnumpy(resampled_img)  # Alternative: img_arr = np.float32(resampled_img.get())   # very fast
+    resampled_img = resize(
+        img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False
+    )  # very fast
+    resampled_img = np.asnumpy(
+        resampled_img
+    )  # Alternative: img_arr = np.float32(resampled_img.get())   # very fast
     return resampled_img

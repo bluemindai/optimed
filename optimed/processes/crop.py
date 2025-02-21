@@ -7,10 +7,7 @@ from typing import Union
 
 
 def get_bbox_from_mask(
-    mask: np.ndarray,
-    outside_value: int = -900,
-    addon: int = 0,
-    verbose: bool = True
+    mask: np.ndarray, outside_value: int = -900, addon: int = 0, verbose: bool = True
 ) -> list:
     """
     Get bounding box coordinates from a mask.
@@ -56,7 +53,7 @@ def get_bbox_from_mask(
 def crop_to_bbox(
     data_or_image: Union[np.ndarray, nib.Nifti1Image],
     bbox: list,
-    dtype: np.dtype = None
+    dtype: np.dtype = None,
 ) -> Union[np.ndarray, nib.Nifti1Image]:
     """
     Crop either a NumPy array or a NIfTI image to a bounding box and adapt the affine if needed.
@@ -71,7 +68,9 @@ def crop_to_bbox(
     """
     if isinstance(data_or_image, nib.Nifti1Image):
         data = data_or_image.get_fdata()
-        data_cropped = data[bbox[0][0]:bbox[0][1], bbox[1][0]:bbox[1][1], bbox[2][0]:bbox[2][1]]
+        data_cropped = data[
+            bbox[0][0] : bbox[0][1], bbox[1][0] : bbox[1][1], bbox[2][0] : bbox[2][1]
+        ]
         affine = np.copy(data_or_image.affine)
         affine[:3, 3] = np.dot(
             affine, np.array([bbox[0][0], bbox[1][0], bbox[2][0], 1])
@@ -80,7 +79,9 @@ def crop_to_bbox(
         return nib.Nifti1Image(data_cropped.astype(out_dtype), affine)
     else:
         assert data_or_image.ndim == 3, "only supports 3d images"
-        return data_or_image[bbox[0][0]:bbox[0][1], bbox[1][0]:bbox[1][1], bbox[2][0]:bbox[2][1]]
+        return data_or_image[
+            bbox[0][0] : bbox[0][1], bbox[1][0] : bbox[1][1], bbox[2][0] : bbox[2][1]
+        ]
 
 
 def crop_to_mask(
@@ -89,7 +90,7 @@ def crop_to_mask(
     addon: list = [0, 0, 0],
     dtype: np.dtype = None,
     save_to: str = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> tuple:
     """
     Crop a NIfTI image to a mask and adapt the affine accordingly.
@@ -107,9 +108,9 @@ def crop_to_mask(
     """
 
     if isinstance(img_in, str):
-        img_in = load_nifti(img_in, engine='nibabel')
+        img_in = load_nifti(img_in, engine="nibabel")
     if isinstance(mask_img, str):
-        mask_img = load_nifti(mask_img, engine='nibabel')
+        mask_img = load_nifti(mask_img, engine="nibabel")
 
     mask = mask_img.get_fdata()
 
@@ -128,7 +129,7 @@ def undo_crop(
     img: Union[str, nib.Nifti1Image],
     ref_img: Union[str, nib.Nifti1Image],
     bbox: list,
-    save_to: str = None
+    save_to: str = None,
 ) -> nib.Nifti1Image:
     """
     Fit the image which was cropped by bbox back into the shape of ref_img.
@@ -143,12 +144,14 @@ def undo_crop(
         nib.Nifti1Image: The image fitted back into the original shape.
     """
     if isinstance(img, str):
-        img = load_nifti(img, engine='nibabel')
+        img = load_nifti(img, engine="nibabel")
     if isinstance(ref_img, str):
-        ref_img = load_nifti(ref_img, engine='nibabel')
+        ref_img = load_nifti(ref_img, engine="nibabel")
 
     img_out = np.zeros(ref_img.shape)
-    img_out[bbox[0][0]:bbox[0][1], bbox[1][0]:bbox[1][1], bbox[2][0]:bbox[2][1]] = img.get_fdata()
+    img_out[
+        bbox[0][0] : bbox[0][1], bbox[1][0] : bbox[1][1], bbox[2][0] : bbox[2][1]
+    ] = img.get_fdata()
 
     img_out = nib.Nifti1Image(img_out, ref_img.affine)
 
@@ -166,7 +169,7 @@ def crop_by_xyz_boudaries(
     y_end: int = 512,
     z_start: int = 0,
     z_end: int = 50,
-    dtype=np.int16
+    dtype=np.int16,
 ) -> nib.Nifti1Image:
     """
     Crop a NIfTI image or a file path to an image along the x, y, and z axes.
@@ -187,7 +190,7 @@ def crop_by_xyz_boudaries(
         nib.Nifti1Image: The cropped NIfTI image.
     """
     if isinstance(img_in, str):
-        img_in = load_nifti(img_in, canonical=True, engine='nibabel')
+        img_in = load_nifti(img_in, canonical=True, engine="nibabel")
 
     data = img_in.get_fdata()
     affine = img_in.affine

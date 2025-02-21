@@ -23,13 +23,13 @@ Finds a component by its centroid with a given tolerance.
 
 ---
 
-### 4. `find_component_by_point(components: np.ndarray, target_point: list, num_components: int, atol: int = 3, use_gpu: bool = True) -> Union[int, None]`
-Finds a component containing the specified point within a given tolerance.
+### 4. `find_component_by_point(components: np.ndarray, target_point: list, use_gpu: bool = True) -> Union[int, None]`
+Finds a component containing the specified point.
 - **Returns**: The component label or None.
 
 ---
 
-### 5. `delete_small_segments(binary_mask: np.ndarray, interval: list = [10, np.inf], use_gpu: bool = True, verbose: bool = False) -> np.ndarray`
+### 5. `delete_small_segments(binary_mask: np.ndarray, interval: list = [10, np.inf], use_gpu: bool = True, verbose: bool = True) -> np.ndarray`
 Removes segments whose sizes fall outside the specified interval.
 - **Returns**: The filtered binary mask.
 
