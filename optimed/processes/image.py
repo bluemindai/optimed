@@ -1,6 +1,7 @@
 import skimage
 import numpy as np
 from scipy.ndimage import gaussian_filter
+from optimed.wrappers.calculations import scipy_binary_dilation
 from optimed.processes.crop import get_bbox_from_mask
 
 
@@ -169,6 +170,9 @@ def blur_outside_roi(
         ] = True
         mask_to_use = new_mask
     else:
+        if addon > 0:
+            structure = np.ones((addon, addon, addon))
+            roi_mask = scipy_binary_dilation(roi_mask, structure, iterations=5)
         mask_to_use = roi_mask.astype(bool)
 
     result = np.where(mask_to_use, img, blurred_data)

@@ -11,6 +11,159 @@ import math
 vtk.vtkObject.GlobalWarningDisplayOff()  # Disable VTK warnings
 
 
+def preview_3d_image(
+    input: Union[str, nib.Nifti1Image],
+    output: str,
+    segmentation_dict: Dict[int, Dict[str, Any]],
+    view_direction: Union[str, List[str]] = "A",
+    smoothing: int = 20,
+    shading: int = 20,
+    background_color: Tuple[int, int, int] = (0, 0, 0),
+    window_size: Tuple[int, int] = (800, 800),
+) -> None:
+    """
+    Loads a NIfTI file, converts it to a canonical orientation, creates a 3D segmentation
+    and saves a PNG file for the specified view direction. If a text is provided for a label
+    (e.g. { 'label': str, 'color': (r, g, b), 'size': int }), a caption is generated.
+
+    If view_direction is passed as a list (e.g. ['A', 'I']), the final image is saved as subplots
+    (maximum 2 images per row).
+
+    Parameters:
+        input (Union[str, nib.Nifti1Image]): Path to the NIfTI file or a Nifti1Image object.
+        output (str): Output PNG filename.
+        segmentation_dict (Dict[int, Dict[str, Any]]): Dictionary with parameters for each label.
+        view_direction (str or List[str]): View direction (R, L, A, P, S, I) or list of directions.
+        smoothing (int): Number of smoothing iterations.
+        shading (int): Shading factor.
+        background_color (Tuple[int, int, int]): Background color (RGB).
+        window_size (Tuple[int, int]): Window size.
+
+    Returns:
+        None
+    """
+    # Input validation
+    if isinstance(input, str):
+        assert exists(input), "File not found."
+    else:
+        assert isinstance(input, nib.Nifti1Image), ValueError("input_path must be a file path string or a Nifti1Image.")
+    assert segmentation_dict and len(segmentation_dict) > 0, (
+        "A non-empty segmentation dictionary is required.\n"
+        "Example: {1: {'color': (255, 255, 0), 'opacity': 0.4, 'text': {'label': 'aorta', 'color': (0, 0, 0), 'size': 5}}, "
+        "2: {'color': (255, 0, 255), 'opacity': 1.0}}"
+    )
+    for lbl, props in segmentation_dict.items():
+        assert "color" in props, f"'color' is missing for label {lbl}."
+        assert "opacity" in props, f"'opacity' is missing for label {lbl}."
+        if "text" in props:
+            assert (
+                "label" in props["text"]
+            ), f"'label' is missing in 'text' for label {lbl}."
+            assert (
+                "color" in props["text"]
+            ), f"'color' is missing in 'text' for label {lbl}."
+            assert (
+                "size" in props["text"]
+            ), f"'size' is missing in 'text' for label {lbl}."
+    if smoothing:
+        assert isinstance(smoothing, int), "Smoothing iterations must be an integer."
+        assert smoothing >= 0, "Smoothing iterations must be >= 0."
+    if shading:
+        assert isinstance(shading, int), "Shading factor must be an integer."
+        assert shading >= 0, "Shading factor must be >= 0."
+    if isinstance(view_direction, list):
+        for vd in view_direction:
+            assert vd in [
+                "R",
+                "L",
+                "A",
+                "P",
+                "S",
+                "I",
+            ], f"Invalid view_direction value: {vd}. Allowed values: R, L, A, P, S, I."
+    else:
+        assert view_direction in [
+            "R",
+            "L",
+            "A",
+            "P",
+            "S",
+            "I",
+        ], "Invalid view_direction value. Allowed values: R, L, A, P, S, I."
+    assert (
+        background_color and len(background_color) == 3
+    ), "background_color must be an RGB tuple."
+    for color_channel in background_color:
+        assert (
+            0 <= color_channel <= 255
+        ), "Each color channel must be between 0 and 255."
+    for window_dim in window_size:
+        assert window_dim > 0, "Window dimensions must be positive numbers."
+    assert output.endswith(".png"), "Output filename must end with .png."
+
+    # Load the NIfTI image (convert to canonical orientation)
+    if isinstance(input, str):
+        img = load_nifti(input, canonical=True, engine="nibabel")
+    elif isinstance(input, nib.Nifti1Image):
+        img = as_closest_canonical(input)
+
+    data = img.get_fdata()
+    spacing = img.header.get_zooms()
+    vtk_img = _numpy_to_vtk_image_data(data, spacing=spacing)
+
+    # If view_direction is a list, generate an image for each direction and combine them in subplots
+    if isinstance(view_direction, list):
+        images = []
+        for vd in view_direction:
+            img_arr = _render_segmentation_to_image(
+                vtk_image=vtk_img,
+                segmentation_dict=segmentation_dict,
+                smoothing=smoothing,
+                shading=shading,
+                view_direction=vd,
+                background_color=background_color,
+                window_size=window_size,
+                output_filename=None,
+                return_image=True,
+            )
+            images.append(img_arr)
+
+        n_images = len(images)
+        ncols = min(2, n_images)
+        nrows = math.ceil(n_images / ncols)
+
+        # Choose figure size relative to window_size
+        fig, axes = plt.subplots(
+            nrows, ncols, figsize=(window_size[0] / 100, window_size[1] / 100)
+        )
+        # Flatten axes array if necessary
+        if n_images > 1:
+            axes = np.atleast_1d(axes).flatten()
+        else:
+            axes = [axes]
+        for ax, img in zip(axes, images):
+            ax.imshow(np.flipud(img))
+            ax.axis("off")
+        # Hide unused subplots
+        for ax in axes[len(images) :]:
+            ax.axis("off")
+        plt.tight_layout()
+        plt.savefig(output)
+        plt.close()
+    else:
+        _render_segmentation_to_image(
+            vtk_image=vtk_img,
+            segmentation_dict=segmentation_dict,
+            smoothing=smoothing,
+            shading=shading,
+            view_direction=view_direction,
+            background_color=background_color,
+            window_size=window_size,
+            output_filename=output,
+            return_image=False,
+        )
+
+
 def _numpy_to_vtk_image_data(
     np_data: np.ndarray, spacing=(1, 1, 1)
 ) -> vtk.vtkImageData:
@@ -251,158 +404,6 @@ def _render_segmentation_to_image(
         writer.SetInputConnection(w2i.GetOutputPort())
         writer.Write()
         return None
-
-
-def preview_3d_image(
-    input_path: Union[str, nib.Nifti1Image],
-    output: str,
-    segmentation_dict: Dict[int, Dict[str, Any]],
-    view_direction: Union[str, List[str]] = "A",
-    smoothing: int = 20,
-    shading: int = 20,
-    background_color: Tuple[int, int, int] = (0, 0, 0),
-    window_size: Tuple[int, int] = (800, 800),
-) -> None:
-    """
-    Loads a NIfTI file, converts it to a canonical orientation, creates a 3D segmentation
-    and saves a PNG file for the specified view direction. If a text is provided for a label
-    (e.g. { 'label': str, 'color': (r, g, b), 'size': int }), a caption is generated.
-
-    If view_direction is passed as a list (e.g. ['A', 'I']), the final image is saved as subplots
-    (maximum 2 images per row).
-
-    Parameters:
-        input_path (Union[str, nib.Nifti1Image]): Path to the NIfTI file or a Nifti1Image object.
-        output (str): Output PNG filename.
-        segmentation_dict (Dict[int, Dict[str, Any]]): Dictionary with parameters for each label.
-        view_direction (str or List[str]): View direction (R, L, A, P, S, I) or list of directions.
-        smoothing (int): Number of smoothing iterations.
-        shading (int): Shading factor.
-        background_color (Tuple[int, int, int]): Background color (RGB).
-        window_size (Tuple[int, int]): Window size.
-
-    Returns:
-        None
-    """
-    # Input validation
-    assert exists(input_path), "File not found."
-    assert segmentation_dict and len(segmentation_dict) > 0, (
-        "A non-empty segmentation dictionary is required.\n"
-        "Example: {1: {'color': (255, 255, 0), 'opacity': 0.4, 'text': {'label': 'aorta', 'color': (0, 0, 0), 'size': 5}}, "
-        "2: {'color': (255, 0, 255), 'opacity': 1.0}}"
-    )
-    for lbl, props in segmentation_dict.items():
-        assert "color" in props, f"'color' is missing for label {lbl}."
-        assert "opacity" in props, f"'opacity' is missing for label {lbl}."
-        if "text" in props:
-            assert (
-                "label" in props["text"]
-            ), f"'label' is missing in 'text' for label {lbl}."
-            assert (
-                "color" in props["text"]
-            ), f"'color' is missing in 'text' for label {lbl}."
-            assert (
-                "size" in props["text"]
-            ), f"'size' is missing in 'text' for label {lbl}."
-    if smoothing:
-        assert isinstance(smoothing, int), "Smoothing iterations must be an integer."
-        assert smoothing >= 0, "Smoothing iterations must be >= 0."
-    if shading:
-        assert isinstance(shading, int), "Shading factor must be an integer."
-        assert shading >= 0, "Shading factor must be >= 0."
-    if isinstance(view_direction, list):
-        for vd in view_direction:
-            assert vd in [
-                "R",
-                "L",
-                "A",
-                "P",
-                "S",
-                "I",
-            ], f"Invalid view_direction value: {vd}. Allowed values: R, L, A, P, S, I."
-    else:
-        assert view_direction in [
-            "R",
-            "L",
-            "A",
-            "P",
-            "S",
-            "I",
-        ], "Invalid view_direction value. Allowed values: R, L, A, P, S, I."
-    assert (
-        background_color and len(background_color) == 3
-    ), "background_color must be an RGB tuple."
-    for color_channel in background_color:
-        assert (
-            0 <= color_channel <= 255
-        ), "Each color channel must be between 0 and 255."
-    for window_dim in window_size:
-        assert window_dim > 0, "Window dimensions must be positive numbers."
-    assert output.endswith(".png"), "Output filename must end with .png."
-
-    # Load the NIfTI image (convert to canonical orientation)
-    if isinstance(input_path, str):
-        img = load_nifti(input_path, canonical=True, engine="nibabel")
-    elif isinstance(input_path, nib.Nifti1Image):
-        img = as_closest_canonical(input_path)
-    else:
-        raise ValueError("input_path must be a file path string or a Nifti1Image.")
-
-    data = img.get_fdata()
-    spacing = img.header.get_zooms()
-    vtk_img = _numpy_to_vtk_image_data(data, spacing=spacing)
-
-    # If view_direction is a list, generate an image for each direction and combine them in subplots
-    if isinstance(view_direction, list):
-        images = []
-        for vd in view_direction:
-            img_arr = _render_segmentation_to_image(
-                vtk_image=vtk_img,
-                segmentation_dict=segmentation_dict,
-                smoothing=smoothing,
-                shading=shading,
-                view_direction=vd,
-                background_color=background_color,
-                window_size=window_size,
-                output_filename=None,
-                return_image=True,
-            )
-            images.append(img_arr)
-
-        n_images = len(images)
-        ncols = min(2, n_images)
-        nrows = math.ceil(n_images / ncols)
-
-        # Choose figure size relative to window_size
-        fig, axes = plt.subplots(
-            nrows, ncols, figsize=(window_size[0] / 100, window_size[1] / 100)
-        )
-        # Flatten axes array if necessary
-        if n_images > 1:
-            axes = np.atleast_1d(axes).flatten()
-        else:
-            axes = [axes]
-        for ax, img in zip(axes, images):
-            ax.imshow(np.flipud(img))
-            ax.axis("off")
-        # Hide unused subplots
-        for ax in axes[len(images) :]:
-            ax.axis("off")
-        plt.tight_layout()
-        plt.savefig(output)
-        plt.close()
-    else:
-        _render_segmentation_to_image(
-            vtk_image=vtk_img,
-            segmentation_dict=segmentation_dict,
-            smoothing=smoothing,
-            shading=shading,
-            view_direction=view_direction,
-            background_color=background_color,
-            window_size=window_size,
-            output_filename=output,
-            return_image=False,
-        )
 
 
 # ------------------ USAGE EXAMPLE -------------------
