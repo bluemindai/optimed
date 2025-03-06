@@ -432,7 +432,7 @@ if __name__ == "__main__":
     }
     # Example with a single view direction (normal mode)
     preview_3d_image(
-        input_path=nifti_path,
+        input=nifti_path,
         output="segmentation_preview_single.png",
         segmentation_dict=segmentation_dict_example,
         view_direction="A",  # Allowed values: R, L, A, P, S, I
@@ -444,7 +444,7 @@ if __name__ == "__main__":
 
     # Example with multiple view directions (subplots)
     preview_3d_image(
-        input_path=nifti_path,
+        input=nifti_path,
         output="segmentation_preview_multi.png",
         segmentation_dict=segmentation_dict_example,
         view_direction=["A", "I", "R"],  # List of directions
