@@ -46,7 +46,9 @@ def preview_3d_image(
     if isinstance(input, str):
         assert exists(input), "File not found."
     else:
-        assert isinstance(input, nib.Nifti1Image), ValueError("input_path must be a file path string or a Nifti1Image.")
+        assert isinstance(input, nib.Nifti1Image), ValueError(
+            "input_path must be a file path string or a Nifti1Image."
+        )
     assert segmentation_dict and len(segmentation_dict) > 0, (
         "A non-empty segmentation dictionary is required.\n"
         "Example: {1: {'color': (255, 255, 0), 'opacity': 0.4, 'text': {'label': 'aorta', 'color': (0, 0, 0), 'size': 5}}, "
