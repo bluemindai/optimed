@@ -176,7 +176,7 @@ def delete_small_segments(
     if num_labels == 0:
         return binary_mask
 
-    counts = xp.bincount(labeled.ravel())
+    counts = xp.bincount(xp.array(labeled).ravel())
     remove_labels = xp.where((counts <= interval[0]) | (counts > interval[1]))[0]
 
     if verbose:
@@ -287,9 +287,9 @@ def delete_segments_disconnected_from_parent(
         return binary_mask
 
     intersections = scipy_sum(
-        parent_mask, labels=labeled, index=xp.arange(1, num_labels + 1), use_gpu=use_gpu
+        parent_mask, labels=labeled, index=np.arange(1, num_labels + 1), use_gpu=use_gpu
     )
-    sizes = xp.bincount(labeled.ravel())[1:]
+    sizes = xp.bincount(xp.array(labeled).ravel())[1:]
     remove_labels = (
         xp.where(
             (intersections == 0) | ((intersections > 0) & (sizes < size_threshold))
@@ -363,7 +363,7 @@ def delete_segments_distant_from_point(
     min_dists = scipy_minimum(
         dt, labels=labeled, index=xp.arange(1, num_labels + 1), use_gpu=use_gpu
     )
-    sizes = xp.bincount(labeled.ravel())[1:]
+    sizes = xp.bincount(xp.array(labeled).ravel())[1:]
     remove_labels = (
         xp.where(
             (
@@ -540,7 +540,7 @@ def fill_holes_2d(
         xp = np
 
     holes_labeled, num_labels = scipy_label(~xp.array(binary_mask), use_gpu=use_gpu)
-    counts = xp.bincount(holes_labeled.ravel())
+    counts = xp.bincount(xp.array(holes_labeled).ravel())
     remove_labels = xp.where(counts <= max_hole_size)[0]
     binary_mask[xp.isin(holes_labeled, remove_labels)] = 1
 
@@ -574,7 +574,7 @@ def fill_holes_3d(
         binary_mask = cp.array(binary_mask)
 
     holes_labeled, num_labels = scipy_label(~binary_mask, use_gpu=use_gpu)
-    counts = xp.bincount(holes_labeled.ravel())
+    counts = xp.bincount(xp.array(holes_labeled).ravel())
     remove_labels = xp.where(counts <= max_hole_size)[0]
     binary_mask[xp.isin(holes_labeled, remove_labels)] = 1
 
