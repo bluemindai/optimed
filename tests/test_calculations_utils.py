@@ -9,7 +9,10 @@ from optimed.wrappers.calculations import (
     scipy_distance_transform_edt,
     scipy_minimum,
     scipy_sum,
-    filter_mask
+    filter_mask,
+    scipy_binary_opening,
+    scipy_binary_fill_holes,
+    scipy_median_filter
 )
 
 class TestArrayFunctions(unittest.TestCase):
@@ -264,6 +267,88 @@ class TestArrayFunctions(unittest.TestCase):
             [5, 1, 1]
         ], dtype=np.int32)
         self.assertTrue(np.array_equal(filtered, expected), "filter_mask GPU result is incorrect.")
+
+    # ========================
+    # Tests for scipy_binary_opening
+    # ========================
+    def test_scipy_binary_opening_cpu(self):
+        input_array = np.array([
+            [False, False, False],
+            [False, True, False],
+            [False, False, False]
+        ], dtype=bool)
+        structure = np.ones((3,3), dtype=bool)
+        opened = scipy_binary_opening(input_array, structure=structure, iterations=1, use_gpu=False)
+        expected = np.zeros((3,3), dtype=bool)
+        self.assertTrue(np.array_equal(opened, expected), "CPU binary_opening did not remove isolated pixel.")
+
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_opening.")
+    def test_scipy_binary_opening_gpu(self):
+        input_array = np.array([
+            [False, False, False],
+            [False, True, False],
+            [False, False, False]
+        ], dtype=bool)
+        structure = np.ones((3,3), dtype=bool)
+        opened = scipy_binary_opening(input_array, structure=structure, iterations=1, use_gpu=True)
+        expected = np.zeros((3,3), dtype=bool)
+        self.assertTrue(np.array_equal(opened, expected), "GPU binary_opening did not remove isolated pixel.")
+
+    # ========================
+    # Tests for scipy_binary_fill_holes
+    # ========================
+    def test_scipy_binary_fill_holes_cpu(self):
+        input_array = np.array([
+            [True, True, True],
+            [True, False, True],
+            [True, True, True]
+        ], dtype=bool)
+        filled = scipy_binary_fill_holes(input_array, use_gpu=False)
+        expected = np.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True]
+        ], dtype=bool)
+        self.assertTrue(np.array_equal(filled, expected), "CPU binary_fill_holes did not fill hole.")
+
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_binary_fill_holes.")
+    def test_scipy_binary_fill_holes_gpu(self):
+        input_array = np.array([
+            [True, True, True],
+            [True, False, True],
+            [True, True, True]
+        ], dtype=bool)
+        filled = scipy_binary_fill_holes(input_array, use_gpu=True)
+        expected = np.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True]
+        ], dtype=bool)
+        self.assertTrue(np.array_equal(filled, expected), "GPU binary_fill_holes did not fill hole.")
+
+    # ========================
+    # Tests for scipy_median_filter
+    # ========================
+    def test_scipy_median_filter_cpu(self):
+        input_array = np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+        ], dtype=np.int32)
+        filtered = scipy_median_filter(input_array, size=(3,3), use_gpu=False)
+        self.assertEqual(filtered[1,1], 5, "CPU median_filter center value mismatch.")
+        self.assertEqual(filtered.shape, input_array.shape, "CPU median_filter changed shape.")
+
+    @unittest.skipUnless(_cupy_available, "cupy not installed. Skipping GPU test for scipy_median_filter.")
+    def test_scipy_median_filter_gpu(self):
+        input_array = np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+        ], dtype=np.int32)
+        filtered = scipy_median_filter(input_array, size=(3,3), use_gpu=True)
+        self.assertEqual(filtered[1,1], 5, "GPU median_filter center value mismatch.")
+        self.assertEqual(filtered.shape, input_array.shape, "GPU median_filter changed shape.")
 
 
 if __name__ == '__main__':

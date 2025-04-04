@@ -1,4 +1,4 @@
-__version__ = "1.0.0a1"
+__version__ = "1.0.0a3"
 
 
 def _check_availability(name: str) -> bool:
@@ -9,3 +9,4 @@ def _check_availability(name: str) -> bool:
 
 _cupy_available = _check_availability("cupy")
 _cucim_available = _check_availability("cucim")
+_build_with_gpu = _cupy_available and _cucim_available

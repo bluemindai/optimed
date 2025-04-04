@@ -8,7 +8,10 @@ from scipy.ndimage import label as _scipy_label_cpu
 from scipy.ndimage import binary_dilation as _scipy_binary_dilation_cpu
 from scipy.ndimage import binary_closing as _scipy_binary_closing_cpu
 from scipy.ndimage import binary_erosion as _scipy_binary_erosion_cpu
+from scipy.ndimage import binary_opening as _scipy_binary_opening_cpu
+from scipy.ndimage import binary_fill_holes as _scipy_binary_fill_holes_cpu
 from scipy.ndimage import distance_transform_edt as _scipy_distance_transform_edt_cpu
+from scipy.ndimage import median_filter as _scipy_median_filter_cpu
 from scipy.ndimage import minimum as _scipy_minimum_cpu
 from scipy.ndimage import sum as _scipy_sum_cpu
 from scipy.ndimage import center_of_mass as _scipy_center_of_mass_cpu
@@ -20,9 +23,12 @@ try:
     from cupyx.scipy.ndimage import binary_dilation as _scipy_binary_dilation_gpu
     from cupyx.scipy.ndimage import binary_closing as _scipy_binary_closing_gpu
     from cupyx.scipy.ndimage import binary_erosion as _scipy_binary_erosion_gpu
+    from cupyx.scipy.ndimage import binary_opening as _scipy_binary_opening_gpu
+    from cupyx.scipy.ndimage import binary_fill_holes as _scipy_binary_fill_holes_gpu
     from cupyx.scipy.ndimage import (
         distance_transform_edt as _scipy_distance_transform_edt_gpu,
     )
+    from cupyx.scipy.ndimage import median_filter as _scipy_median_filter_gpu
     from cupyx.scipy.ndimage import minimum as _scipy_minimum_gpu
     from cupyx.scipy.ndimage import sum as _scipy_sum_gpu
     from cupyx.scipy.ndimage import center_of_mass as _scipy_center_of_mass_gpu
@@ -199,6 +205,105 @@ def scipy_distance_transform_edt(
     else:
         input = cp.asarray(input)
         result = _scipy_distance_transform_edt_gpu(input, sampling)
+        return _ensure_numpy(result)
+
+
+def scipy_binary_opening(
+    input: np.ndarray,
+    structure: np.ndarray = None,
+    iterations: int = 1,
+    use_gpu: bool = True,
+) -> np.ndarray:
+    """
+    Applies binary opening to the input array.
+    Uses GPU acceleration if available and requested.
+
+    Parameters:
+        input (np.ndarray): The input array.
+        structure (np.ndarray): The structuring element.
+        iterations (int): The number of iterations.
+        use_gpu (bool): If True, uses GPU acceleration.
+
+    Returns:
+        np.ndarray: The opened array.
+    """
+    if not use_gpu or not _cupy_available:
+        warnings.warn(
+            "GPU is not available or not requested. Using CPU for calculations."
+        )
+        input = np.asarray(input)
+        structure = np.asarray(structure) if structure is not None else None
+        return _scipy_binary_opening_cpu(input, structure, iterations)
+    else:
+        input = cp.asarray(input)
+        structure = cp.asarray(structure) if structure is not None else None
+        result = _scipy_binary_opening_gpu(input, structure, iterations)
+        return _ensure_numpy(result)
+
+
+def scipy_binary_fill_holes(
+    input: np.ndarray, structure: np.ndarray = None, use_gpu: bool = True
+) -> np.ndarray:
+    """
+    Fills holes in the binary input array.
+    Uses GPU acceleration if available and requested.
+
+    Parameters:
+        input (np.ndarray): The input array.
+        structure (np.ndarray): The structuring element.
+        use_gpu (bool): If True, uses GPU acceleration.
+
+    Returns:
+        np.ndarray: The filled array.
+    """
+    if not use_gpu or not _cupy_available:
+        warnings.warn(
+            "GPU is not available or not requested. Using CPU for calculations."
+        )
+        input = np.asarray(input)
+        structure = np.asarray(structure) if structure is not None else None
+        return _scipy_binary_fill_holes_cpu(input, structure)
+    else:
+        input = cp.asarray(input)
+        structure = cp.asarray(structure) if structure is not None else None
+        result = _scipy_binary_fill_holes_gpu(input, structure)
+        return _ensure_numpy(result)
+
+
+def scipy_median_filter(
+    input: np.ndarray,
+    size: Tuple[int, int] = (3, 3),
+    footprint: np.ndarray = None,
+    mode: str = "reflect",
+    cval: float = 0.0,
+    use_gpu: bool = True,
+) -> np.ndarray:
+    """
+    Applies a median filter to the input array.
+    Uses GPU acceleration if available and requested.
+
+    Parameters:
+        input (np.ndarray): The input array.
+        size (Tuple[int, int]): The size of the filter.
+        footprint (np.ndarray): The structuring element.
+        mode (str): The mode for handling borders.
+        cval (float): The value to use for constant mode.
+        use_gpu (bool): If True, uses GPU acceleration.
+
+    Returns:
+        np.ndarray: The filtered array.
+    """
+    if not use_gpu or not _cupy_available:
+        warnings.warn(
+            "GPU is not available or not requested. Using CPU for calculations."
+        )
+        input = np.asarray(input)
+        footprint = np.asarray(footprint) if footprint is not None else None
+        return _scipy_median_filter_cpu(input, size, footprint, None, mode, cval)
+    else:
+        input = cp.asarray(input)
+        footprint = cp.asarray(footprint) if footprint is not None else None
+        result = _scipy_median_filter_gpu(input, size, footprint, None, mode, cval)
         return _ensure_numpy(result)
 
 

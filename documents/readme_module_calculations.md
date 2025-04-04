@@ -59,6 +59,27 @@ Filters the input mask so that only specified label values remain.
 - Additional Info: Filter mask operation retains only the designated labels, removing unwanted regions.
 - **Returns**: The filtered mask.
 
+---
+
+### 9. `scipy_binary_opening(input: np.ndarray, structure: np.ndarray = None, iterations: int = 1, use_gpu: bool = True) -> np.ndarray`
+Applies binary opening to the input array.
+- Additional Info: Binary opening removes small objects and noise by first eroding and then dilating the image.
+- **Returns**: The opened array.
+
+---
+
+### 10. `scipy_binary_fill_holes(input: np.ndarray, structure: np.ndarray = None, use_gpu: bool = True) -> np.ndarray`
+Fills holes in the binary input array.
+- Additional Info: This function fills interior holes within objects, improving segmentation results.
+- **Returns**: The filled array.
+
+---
+
+### 11. `scipy_median_filter(input: np.ndarray, size: Tuple[int, int] = (3, 3), footprint: np.ndarray = None, mode: str = "reflect", cval: float = 0.0, use_gpu: bool = True) -> np.ndarray`
+Applies a median filter to reduce noise while preserving edges.
+- Additional Info: Median filtering is useful for removing impulse noise without blurring sharp edges.
+- **Returns**: The filtered array.
+
 ## Usage Example
 
 ```python
