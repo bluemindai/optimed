@@ -3,10 +3,32 @@ import os
 import json
 import yaml
 from tempfile import TemporaryDirectory
-from optimed.wrappers.operations import *
+from optimed.wrappers.operations import (
+    append_to_file,
+    copy_file,
+    count_files,
+    get_absolute_path,
+    get_file_extension,
+    get_file_size,
+    if_directory_exists,
+    if_file_exists,
+    list_dir,
+    list_subdirs,
+    load_json,
+    load_yaml,
+    maybe_mkdir,
+    maybe_remove_dir,
+    maybe_remove_file,
+    move_file,
+    read_file,
+    rename_file,
+    save_json,
+    save_yaml,
+    write_to_file,
+)
+
 
 class TestFileOperations(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = TemporaryDirectory()
         self.test_file = os.path.join(self.test_dir.name, "test_file.txt")
@@ -26,7 +48,7 @@ class TestFileOperations(unittest.TestCase):
         dir_path = os.path.join(self.test_dir.name, "new_dir")
         maybe_mkdir(dir_path)
         maybe_remove_dir(dir_path)
-        self.assertTrue(~os.path.exists(dir_path))
+        self.assertFalse(os.path.exists(dir_path))
 
     def test_maybe_remove_file(self):
         write_to_file(self.test_content, self.test_file)
@@ -123,7 +145,7 @@ class TestFileOperations(unittest.TestCase):
         data = {"key": "value"}
         save_json(data, self.test_json_file)
         self.assertTrue(os.path.isfile(self.test_json_file))
-        with open(self.test_json_file, 'r') as f:
+        with open(self.test_json_file, "r") as f:
             loaded_data = json.load(f)
         self.assertEqual(loaded_data, data)
 
@@ -137,9 +159,10 @@ class TestFileOperations(unittest.TestCase):
         data = {"key": "value"}
         save_yaml(data, self.test_yaml_file)
         self.assertTrue(os.path.isfile(self.test_yaml_file))
-        with open(self.test_yaml_file, 'r') as f:
+        with open(self.test_yaml_file, "r") as f:
             loaded_data = yaml.safe_load(f)
         self.assertEqual(loaded_data, data)
+
 
 if __name__ == "__main__":
     unittest.main()

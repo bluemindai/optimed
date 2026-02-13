@@ -42,66 +42,64 @@ def preview_3d_image(
     Returns:
         None
     """
+    valid_view_directions = {"R", "L", "A", "P", "S", "I"}
+
     # Input validation
     if isinstance(input, str):
-        assert exists(input), "File not found."
+        if not exists(input):
+            raise FileNotFoundError(f"File not found: {input}")
     else:
-        assert isinstance(input, nib.Nifti1Image), ValueError(
-            "input_path must be a file path string or a Nifti1Image."
-        )
-    assert segmentation_dict and len(segmentation_dict) > 0, (
-        "A non-empty segmentation dictionary is required.\n"
-        "Example: {1: {'color': (255, 255, 0), 'opacity': 0.4, 'text': {'label': 'aorta', 'color': (0, 0, 0), 'size': 5}}, "
-        "2: {'color': (255, 0, 255), 'opacity': 1.0}}"
-    )
+        if not isinstance(input, nib.Nifti1Image):
+            raise TypeError("input must be a file path string or a nib.Nifti1Image.")
+    if not isinstance(segmentation_dict, dict) or len(segmentation_dict) == 0:
+        raise ValueError("segmentation_dict must be a non-empty dictionary.")
     for lbl, props in segmentation_dict.items():
-        assert "color" in props, f"'color' is missing for label {lbl}."
-        assert "opacity" in props, f"'opacity' is missing for label {lbl}."
+        if not isinstance(lbl, (int, np.integer)):
+            raise TypeError(f"Label key must be integer, got {type(lbl)}")
+        if "color" not in props:
+            raise ValueError(f"'color' is missing for label {lbl}.")
+        if "opacity" not in props:
+            raise ValueError(f"'opacity' is missing for label {lbl}.")
         if "text" in props:
-            assert (
-                "label" in props["text"]
-            ), f"'label' is missing in 'text' for label {lbl}."
-            assert (
-                "color" in props["text"]
-            ), f"'color' is missing in 'text' for label {lbl}."
-            assert (
-                "size" in props["text"]
-            ), f"'size' is missing in 'text' for label {lbl}."
+            if not isinstance(props["text"], dict):
+                raise TypeError(f"'text' for label {lbl} must be a dict.")
+            if "label" not in props["text"]:
+                raise ValueError(f"'label' is missing in 'text' for label {lbl}.")
+            if "color" not in props["text"]:
+                raise ValueError(f"'color' is missing in 'text' for label {lbl}.")
+            if "size" not in props["text"]:
+                raise ValueError(f"'size' is missing in 'text' for label {lbl}.")
     if smoothing:
-        assert isinstance(smoothing, int), "Smoothing iterations must be an integer."
-        assert smoothing >= 0, "Smoothing iterations must be >= 0."
+        if not isinstance(smoothing, int):
+            raise TypeError("smoothing must be an integer.")
+        if smoothing < 0:
+            raise ValueError("smoothing must be >= 0.")
     if shading:
-        assert isinstance(shading, int), "Shading factor must be an integer."
-        assert shading >= 0, "Shading factor must be >= 0."
+        if not isinstance(shading, int):
+            raise TypeError("shading must be an integer.")
+        if shading < 0:
+            raise ValueError("shading must be >= 0.")
     if isinstance(view_direction, list):
         for vd in view_direction:
-            assert vd in [
-                "R",
-                "L",
-                "A",
-                "P",
-                "S",
-                "I",
-            ], f"Invalid view_direction value: {vd}. Allowed values: R, L, A, P, S, I."
+            if vd not in valid_view_directions:
+                raise ValueError(
+                    f"Invalid view_direction value: {vd}. Allowed values: {sorted(valid_view_directions)}."
+                )
     else:
-        assert view_direction in [
-            "R",
-            "L",
-            "A",
-            "P",
-            "S",
-            "I",
-        ], "Invalid view_direction value. Allowed values: R, L, A, P, S, I."
-    assert (
-        background_color and len(background_color) == 3
-    ), "background_color must be an RGB tuple."
+        if view_direction not in valid_view_directions:
+            raise ValueError(
+                f"Invalid view_direction value. Allowed values: {sorted(valid_view_directions)}."
+            )
+    if not (background_color and len(background_color) == 3):
+        raise ValueError("background_color must be an RGB tuple.")
     for color_channel in background_color:
-        assert (
-            0 <= color_channel <= 255
-        ), "Each color channel must be between 0 and 255."
+        if not (0 <= color_channel <= 255):
+            raise ValueError("Each color channel must be between 0 and 255.")
     for window_dim in window_size:
-        assert window_dim > 0, "Window dimensions must be positive numbers."
-    assert output.endswith(".png"), "Output filename must end with .png."
+        if window_dim <= 0:
+            raise ValueError("Window dimensions must be positive numbers.")
+    if not output.endswith(".png"):
+        raise ValueError("Output filename must end with .png.")
 
     # Load the NIfTI image (convert to canonical orientation)
     if isinstance(input, str):

@@ -3,28 +3,31 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from optimed.wrappers.calculations import scipy_binary_dilation
 from optimed.processes.crop import get_bbox_from_mask
+from numpy.typing import DTypeLike
 
 
 def rescale_intensity(
     img: np.ndarray,
     lower: float = -125.0,
     upper: float = 225.0,
-    dtype: np.dtype = np.float32,
-):
+    dtype: DTypeLike = np.float32,
+) -> np.ndarray:
     """
     Apply intensity rescaling to an image (also known as windowing).
 
     Parameters:
-        data (np.ndarray): Input data.
+        img (np.ndarray): Input image.
         lower (float): Lower bound.
         upper (float): Upper bound.
         dtype (np.dtype): Data type.
 
     Returns:
-        np.ndarray: Windowed data.
+        np.ndarray: Rescaled image.
     """
-    assert isinstance(img, np.ndarray), "data must be a NumPy array"
-    assert dtype in [np.float32, np.float64], "dtype must be a float type"
+    if not isinstance(img, np.ndarray):
+        raise TypeError("img must be a NumPy array")
+    if dtype not in [np.float32, np.float64]:
+        raise TypeError("dtype must be a float type")
 
     clipped = np.clip(img, lower, upper).astype(dtype)
     return skimage.exposure.rescale_intensity(
@@ -36,8 +39,8 @@ def denoise_image(
     img: np.ndarray,
     sigma: float = 0.5,
     mode: str = "gaussian",
-    multichannel: bool = False,
-):
+    channel_axis: int = None,
+) -> np.ndarray:
     """
     Denoise an image using a Gaussian filter.
 
@@ -45,23 +48,23 @@ def denoise_image(
         img (np.ndarray): Input image.
         sigma (float): Standard deviation for Gaussian kernel.
         mode (str): Type of denoising filter.
-        multichannel (bool): If True, apply filter to each channel.
+        channel_axis (int, optional): If not None, the axis of img corresponding to channels.
 
     Returns:
         np.ndarray: Denoised image.
     """
-    assert mode in [
-        "gaussian",
-        "bilateral",
-    ], 'mode must be either "gaussian" or "bilateral"'
-    assert isinstance(img, np.ndarray), "data must be a NumPy array"
-    assert img.ndim == 3, "only supports 3D images"
+    if mode not in ["gaussian", "bilateral"]:
+        raise ValueError('mode must be either "gaussian" or "bilateral"')
+    if not isinstance(img, np.ndarray):
+        raise TypeError("img must be a NumPy array")
+    if img.ndim != 3:
+        raise ValueError("only supports 3D images")
 
     if mode == "gaussian":
         return gaussian_filter(img, sigma=sigma)
-    elif mode == "bilateral":
+    else:  # bilateral
         return skimage.restoration.denoise_bilateral(
-            img, sigma_color=sigma, multichannel=multichannel
+            img, sigma_color=sigma, channel_axis=channel_axis
         )
 
 
@@ -78,8 +81,10 @@ def get_mask_by_threshold(img: np.ndarray, threshold: float, above: bool = True)
     Returns:
         np.ndarray: A binary mask.
     """
-    assert isinstance(img, np.ndarray), "data must be a NumPy array"
-    assert img.ndim == 3, "only supports 3D images"
+    if not isinstance(img, np.ndarray):
+        raise TypeError("img must be a NumPy array")
+    if img.ndim != 3:
+        raise ValueError("only supports 3D images")
 
     if above:
         mask = img > threshold
@@ -110,11 +115,12 @@ def blur_inside_roi(
     Returns:
         np.ndarray: The image with the ROI blurred.
     """
-    assert isinstance(img, np.ndarray) and isinstance(
-        roi_mask, np.ndarray
-    ), "data must be a NumPy array"
-    assert img.ndim == 3 and roi_mask.ndim == 3, "only supports 3D images"
-    assert img.shape == roi_mask.shape, "data and mask must have the same shape"
+    if not isinstance(img, np.ndarray) or not isinstance(roi_mask, np.ndarray):
+        raise TypeError("img and roi_mask must be NumPy arrays")
+    if img.ndim != 3 or roi_mask.ndim != 3:
+        raise ValueError("only supports 3D images")
+    if img.shape != roi_mask.shape:
+        raise ValueError("img and roi_mask must have the same shape")
 
     blurred_data = gaussian_filter(img, sigma=sigma)
 
@@ -153,17 +159,17 @@ def blur_outside_roi(
     Returns:
         np.ndarray: The image with the outside of the ROI blurred.
     """
-    assert isinstance(img, np.ndarray) and isinstance(
-        roi_mask, np.ndarray
-    ), "data must be a NumPy array"
-    assert img.ndim == 3 and roi_mask.ndim == 3, "only supports 3D images"
-    assert img.shape == roi_mask.shape, "data and mask must have the same shape"
-
-    bbox = get_bbox_from_mask(roi_mask, outside_value=0, addon=addon, verbose=False)
+    if not isinstance(img, np.ndarray) or not isinstance(roi_mask, np.ndarray):
+        raise TypeError("img and roi_mask must be NumPy arrays")
+    if img.ndim != 3 or roi_mask.ndim != 3:
+        raise ValueError("only supports 3D images")
+    if img.shape != roi_mask.shape:
+        raise ValueError("img and roi_mask must have the same shape")
 
     blurred_data = gaussian_filter(img, sigma=sigma)
 
     if use_bbox:
+        bbox = get_bbox_from_mask(roi_mask, outside_value=0, addon=addon, verbose=False)
         new_mask = np.zeros_like(roi_mask, dtype=bool)
         new_mask[
             bbox[0][0] : bbox[0][1], bbox[1][0] : bbox[1][1], bbox[2][0] : bbox[2][1]

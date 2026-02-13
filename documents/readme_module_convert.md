@@ -33,7 +33,7 @@ Converts a NRRD file to NIfTI format.
 
 ---
 
-### 5. `conver_mha_to_nifti(mha_file: Union[str, object], nifti_file: str, return_object: bool = True, return_type: str = 'nibabel') -> Union[nib.Nifti1Image, sitk.Image]`
+### 5. `convert_mha_to_nifti(mha_file: Union[str, object], nifti_file: str, return_object: bool = True, return_type: str = 'nibabel') -> Union[nib.Nifti1Image, sitk.Image]`
 Converts a MHA file to NIfTI format.
 - Additional Info: Reads the MHA image using SimpleITK and writes it as a NIfTI.
 - **Returns**: A converted NIfTI image.

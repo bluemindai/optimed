@@ -33,7 +33,7 @@ Restores a cropped image to its original dimensions using a reference image.
 
 ---
 
-### 5. `crop_by_xyz_boudaries(img_in: Union[nib.Nifti1Image, str], save_to: str = None, x_start: int = 0, x_end: int = 512, y_start: int = 0, y_end: int = 512, z_start: int = 0, z_end: int = 50, dtype=np.int16) -> nib.Nifti1Image`
+### 5. `crop_by_xyz_boundaries(img_in: Union[nib.Nifti1Image, str], save_to: str = None, x_start: int = 0, x_end: int = 512, y_start: int = 0, y_end: int = 512, z_start: int = 0, z_end: int = 50, dtype=np.int16) -> nib.Nifti1Image`
 Crops an image along explicit x, y, and z boundaries.
 - Additional Info: Useful for fixed region cropping by specifying indices.
 - **Returns**: The cropped NIfTI image.

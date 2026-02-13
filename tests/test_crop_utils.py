@@ -4,10 +4,11 @@ import nibabel as nib
 from optimed.processes.crop import (
     get_bbox_from_mask,
     crop_to_bbox,
-    crop_by_xyz_boudaries,
+    crop_by_xyz_boundaries,
     crop_to_mask,
-    undo_crop
+    undo_crop,
 )
+
 
 class TestCrop(unittest.TestCase):
     def test_get_bbox_from_mask(self):
@@ -24,7 +25,9 @@ class TestCrop(unittest.TestCase):
 
     def test_crop_by_xyz_boundaries(self):
         data = nib.Nifti1Image(np.random.rand(6, 6, 6), np.eye(4))
-        cropped = crop_by_xyz_boudaries(data, x_start=2, x_end=5, y_start=1, y_end=4, z_start=0, z_end=3)
+        cropped = crop_by_xyz_boundaries(
+            data, x_start=2, x_end=5, y_start=1, y_end=4, z_start=0, z_end=3
+        )
         self.assertEqual(cropped.shape, (3, 3, 3))
 
     def test_crop_to_mask(self):
@@ -40,6 +43,7 @@ class TestCrop(unittest.TestCase):
         bbox = [[1, 4], [1, 4], [1, 4]]
         undone = undo_crop(cropped_img, ref_img, bbox)
         self.assertEqual(undone.shape, (5, 5, 5))
+
 
 if __name__ == "__main__":
     unittest.main()

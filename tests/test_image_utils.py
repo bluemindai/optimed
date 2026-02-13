@@ -5,8 +5,9 @@ from optimed.processes.image import (
     denoise_image,
     get_mask_by_threshold,
     blur_inside_roi,
-    blur_outside_roi
+    blur_outside_roi,
 )
+
 
 class TestImageFunctions(unittest.TestCase):
     def test_rescale_intensity(self):
@@ -16,13 +17,13 @@ class TestImageFunctions(unittest.TestCase):
 
     def test_denoise_image(self):
         img = np.random.rand(5, 5, 5).astype(np.float32)
-        out = denoise_image(img, sigma=1.0, mode='gaussian')
+        out = denoise_image(img, sigma=1.0, mode="gaussian")
         self.assertEqual(out.shape, img.shape)
 
     def test_get_mask_by_threshold(self):
         img = np.array([[[1, 3], [5, 10]]], dtype=np.float32)
         mask = get_mask_by_threshold(img, threshold=4, above=True)
-        self.assertTrue(mask[0, 0, 0] == False and mask[0, 1, 1] == True)
+        self.assertTrue((not mask[0, 0, 0]) and mask[0, 1, 1])
 
     def test_blur_inside_roi(self):
         img = np.zeros((5, 5, 5), dtype=np.float32)
@@ -40,6 +41,7 @@ class TestImageFunctions(unittest.TestCase):
         out = blur_outside_roi(img, roi, sigma=2)
         self.assertTrue(np.allclose(img[2, 2, 2], out[2, 2, 2]))
         self.assertFalse(np.allclose(img[0, 0, 0], out[0, 0, 0]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,9 +14,10 @@ from optimed.processes.convert import (
     convert_nibabel_to_sitk,
     convert_dcm_to_nifti,
     convert_nrrd_to_nifti,
-    conver_mha_to_nifti,
-    convert_nifti_to_nrrd
+    convert_mha_to_nifti,
+    convert_nifti_to_nrrd,
 )
+
 
 # Dummy reader for simulating DICOM series conversion.
 class DummyImageSeriesReader:
@@ -38,18 +39,18 @@ class DummyImageSeriesReader:
         image.SetSpacing((1, 1, 1))
         return image
 
-class TestConvert(unittest.TestCase):
 
+class TestConvert(unittest.TestCase):
     def test_convert_sitk_to_nibabel(self):
         # Create a dummy SimpleITK image.
         data = np.random.rand(10, 10, 10)
         sitk_image = sitk.GetImageFromArray(data)
         sitk_image.SetOrigin((1.0, 2.0, 3.0))
         sitk_image.SetSpacing((1.0, 1.0, 1.0))
-        
+
         # Convert to NIfTI using the provided function.
         nib_image = convert_sitk_to_nibabel(sitk_image)
-        
+
         # Check that the output is a nibabel NIfTI image and that the data is preserved.
         self.assertIsInstance(nib_image, nib.Nifti1Image)
         np.testing.assert_allclose(nib_image.get_fdata(), data)
@@ -60,10 +61,10 @@ class TestConvert(unittest.TestCase):
         affine = np.eye(4)
         affine[:3, 3] = [5, 5, 5]
         nib_image = nib.Nifti1Image(data, affine)
-        
+
         # Convert to SimpleITK.
         sitk_image = convert_nibabel_to_sitk(nib_image)
-        
+
         # Check that the result is a SimpleITK image and that the image data is preserved.
         self.assertTrue(isinstance(sitk_image, sitk.Image))
         np.testing.assert_allclose(sitk.GetArrayFromImage(sitk_image), data)
@@ -81,16 +82,19 @@ class TestConvert(unittest.TestCase):
             dummy_file = os.path.join(dicom_path, "dummy.dcm")
             with open(dummy_file, "w") as f:
                 f.write("dummy content")
-            
+
             nifti_file = os.path.join(tmpdirname, "output.nii.gz")
             # Call the conversion function.
             result = convert_dcm_to_nifti(
-                dicom_path, nifti_file,
-                permute_axes=False, return_object=True, return_type='sitk'
+                dicom_path,
+                nifti_file,
+                permute_axes=False,
+                return_object=True,
+                return_type="sitk",
             )
             self.assertIsNotNone(result)
             self.assertTrue(os.path.exists(nifti_file))
-        
+
         # Restore the original ImageSeriesReader.
         sitk.ImageSeriesReader = original_reader
 
@@ -101,18 +105,20 @@ class TestConvert(unittest.TestCase):
             nifti_file = os.path.join(tmpdirname, "output.nii.gz")
             data = np.random.rand(5, 5, 5)
             header = {
-                'space directions': np.eye(3).tolist(),
-                'space origin': [0, 0, 0],
-                'space': 'left-posterior-superior'
+                "space directions": np.eye(3).tolist(),
+                "space origin": [0, 0, 0],
+                "space": "left-posterior-superior",
             }
             nrrd.write(nrrd_file, data, header)
-            
+
             # Convert the NRRD file to NIfTI.
-            result = convert_nrrd_to_nifti(nrrd_file, nifti_file, return_object=True, return_type='nibabel')
+            result = convert_nrrd_to_nifti(
+                nrrd_file, nifti_file, return_object=True, return_type="nibabel"
+            )
             self.assertIsNotNone(result)
             self.assertTrue(os.path.exists(nifti_file))
 
-    def test_conver_mha_to_nifti(self):
+    def test_convert_mha_to_nifti(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             # Create a dummy MHA file using SimpleITK.
             mha_file = os.path.join(tmpdirname, "dummy.mha")
@@ -120,9 +126,11 @@ class TestConvert(unittest.TestCase):
             data = np.random.rand(10, 10, 10)
             image = sitk.GetImageFromArray(data)
             sitk.WriteImage(image, mha_file)
-            
+
             # Convert the MHA file to NIfTI.
-            result = conver_mha_to_nifti(mha_file, nifti_file, return_object=True, return_type='nibabel')
+            result = convert_mha_to_nifti(
+                mha_file, nifti_file, return_object=True, return_type="nibabel"
+            )
             self.assertIsNotNone(result)
             self.assertTrue(os.path.exists(nifti_file))
 
@@ -155,7 +163,9 @@ class TestConvert(unittest.TestCase):
 
             output_seg_filename = os.path.join(tmpdirname, "seg.seg.nrrd")
             # Convert the NIfTI segmentation to a Slicer segmentation (NRRD).
-            convert_nifti_to_nrrd(nifti_file, output_seg_filename, segment_metadata=None, verbose=False)
+            convert_nifti_to_nrrd(
+                nifti_file, output_seg_filename, segment_metadata=None, verbose=False
+            )
             self.assertTrue(os.path.exists(output_seg_filename))
             with open(output_seg_filename, "r") as f:
                 content = f.read()
@@ -164,6 +174,7 @@ class TestConvert(unittest.TestCase):
         # Restore the original slicerio functions.
         slicerio.read_segmentation = original_read
         slicerio.write_segmentation = original_write
+
 
 if __name__ == "__main__":
     unittest.main()

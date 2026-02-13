@@ -4,19 +4,20 @@ from scipy import ndimage
 import nibabel as nib
 import numpy as np
 import psutil
+from typing import Optional, Union
 
 # Some code snippets are taken from TotalSegmentator (https://github.com/wasserth/TotalSegmentator/blob/master/totalsegmentator/resampling.py)
 
 
 def change_spacing(
     img_in: nib.Nifti1Image,
-    new_spacing: float = 1.25,
-    target_shape: tuple = None,
+    new_spacing: Union[float, list[float], np.ndarray] = 1.25,
+    target_shape: Optional[tuple] = None,
     order: int = 0,
     nr_cpus: int = 1,
-    dtype: np.dtype = None,
+    dtype: Optional[np.dtype] = None,
     remove_negative: bool = False,
-    force_affine: np.ndarray = None,
+    force_affine: Optional[np.ndarray] = None,
     use_gpu: bool = True,
 ) -> nib.Nifti1Image:
     """
@@ -36,6 +37,12 @@ def change_spacing(
     Returns:
         nib.Nifti1Image: The resampled NIfTI image.
     """
+    if not isinstance(img_in, nib.Nifti1Image):
+        raise TypeError("img_in must be a nib.Nifti1Image.")
+
+    if target_shape is None and new_spacing is None:
+        raise ValueError("Either new_spacing or target_shape must be provided.")
+
     data = img_in.get_fdata()  # quite slow
     old_shape = np.array(data.shape)
     img_spacing = np.array(img_in.header.get_zooms())
@@ -43,17 +50,16 @@ def change_spacing(
     if len(img_spacing) == 4:
         img_spacing = img_spacing[:3]  # for 4D images only use spacing of first 3 dims
 
-    if type(new_spacing) is float:
-        new_spacing = [
-            new_spacing,
-        ] * 3  # for 3D and 4D
-    new_spacing = np.array(new_spacing)
+    if isinstance(new_spacing, float):
+        new_spacing_np = np.array([new_spacing] * 3, dtype=float)  # for 3D and 4D
+    else:
+        new_spacing_np = np.array(new_spacing, dtype=float)
 
     if len(old_shape) == 2:
         img_spacing = np.array(
             list(img_spacing)
             + [
-                new_spacing[2],
+                new_spacing_np[2],
             ]
         )
 
@@ -61,11 +67,11 @@ def change_spacing(
         # Find the right zoom to exactly reach the target_shape.
         # We also have to adapt the spacing to this new zoom.
         zoom = np.array(target_shape) / old_shape
-        new_spacing = img_spacing / zoom
+        new_spacing_np = img_spacing / zoom
     else:
-        zoom = img_spacing / new_spacing
+        zoom = img_spacing / new_spacing_np
 
-    if np.array_equal(img_spacing, new_spacing):
+    if np.array_equal(img_spacing, new_spacing_np):
         # Input spacing is equal to new spacing. Return image without resampling.
         return img_in
 
@@ -90,9 +96,7 @@ def change_spacing(
     # spacing = tuple(np.sqrt(np.sum(vecs ** 2, axis=0)))
 
     if (_cupy_available and _cucim_available) and use_gpu:
-        new_data = resample_img_cucim(
-            data, zoom=zoom, order=order, nr_cpus=nr_cpus
-        )  # gpu resampling
+        new_data = resample_img_cucim(data, zoom=zoom, order=order)  # gpu resampling
     else:
         new_data = resample_img(
             data, zoom=zoom, order=order, nr_cpus=nr_cpus
@@ -108,14 +112,15 @@ def change_spacing(
         new_affine = force_affine
 
     new_header = img_in.header.copy()
-    new_header.set_data_dtype(dtype)
+    if dtype is not None:
+        new_header.set_data_dtype(dtype)
 
     return nib.Nifti1Image(new_data, affine=new_affine, header=new_header)
 
 
 def change_spacing_of_affine(affine: np.ndarray, zoom: float = 0.5) -> np.ndarray:
     """
-    Change the spacing of an affine matrix.
+    Change the spacing of an affine matrix by scaling each column vector.
 
     Parameters:
         affine (np.ndarray): The input affine matrix.
@@ -125,8 +130,9 @@ def change_spacing_of_affine(affine: np.ndarray, zoom: float = 0.5) -> np.ndarra
         np.ndarray: The updated affine matrix.
     """
     new_affine = np.copy(affine)
-    for i in range(3):
-        new_affine[i, i] /= zoom
+    new_affine[:3, 0] = new_affine[:3, 0] / zoom
+    new_affine[:3, 1] = new_affine[:3, 1] / zoom
+    new_affine[:3, 2] = new_affine[:3, 2] / zoom
     return new_affine
 
 
@@ -195,14 +201,18 @@ def resample_img_cucim(
     - The speedup is less noticeable for small images.
     - cuCIM may not always be faster depending on the environment.
     """
+    if not (_cupy_available and _cucim_available):
+        raise RuntimeError("CuPy/cuCIM are not available for GPU resampling.")
+
+    import cupy as cp
     from cucim.skimage.transform import resize
 
-    img = np.asarray(img)  # slow
-    new_shape = (np.array(img.shape) * zoom).round().astype(np.int32)
+    img = cp.asarray(img)
+    new_shape = tuple((np.array(img.shape) * zoom).round().astype(np.int32).tolist())
     resampled_img = resize(
         img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False
     )  # very fast
-    resampled_img = np.asnumpy(
+    resampled_img = cp.asnumpy(
         resampled_img
     )  # Alternative: img_arr = np.float32(resampled_img.get())   # very fast
     return resampled_img

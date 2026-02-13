@@ -26,3 +26,16 @@ push:
 .PHONY: open-html
 open-html:
 	open htmlcov/index.html
+
+.PHONY: format
+format:
+	python3 -m ruff format .
+
+.PHONY: mypy
+mypy:
+	python3 -m mypy optimed tests
+
+.PHONY: check
+check:
+	python3 -m ruff check .
+	$(MAKE) mypy

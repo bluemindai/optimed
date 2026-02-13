@@ -12,6 +12,7 @@ import os
 
 from typing import Tuple, Union, List
 import warnings
+from numpy.typing import DTypeLike
 
 
 def load_nifti(
@@ -48,14 +49,14 @@ def load_nifti(
             A NIfTI image object loaded from the specified file using the selected engine.
     """
 
-    assert os.path.exists(file), f"No such file: {file}"
-    assert os.path.isfile(file), f"Is not a file: {file}"
-    assert file.endswith(".nii.gz") or file.endswith(".nii"), "Invalid NIfTI extension."
-    assert engine in [
-        "nibabel",
-        "sitk",
-    ], "Invalid engine specified. Use 'nibabel' or 'sitk'."
-
+    if engine not in ["nibabel", "sitk"]:
+        raise ValueError("Invalid engine specified. Use 'nibabel' or 'sitk'.")
+    if not os.path.exists(file):
+        raise FileNotFoundError(f"No such file: {file}")
+    if not os.path.isfile(file):
+        raise ValueError(f"Is not a file: {file}")
+    if not (file.endswith(".nii.gz") or file.endswith(".nii")):
+        raise ValueError("Invalid NIfTI extension.")
     if engine == "nibabel":
         if canonical:
             return nib.as_closest_canonical(nib.load(file, mmap=mmap))
@@ -69,6 +70,8 @@ def load_nifti(
                 UserWarning,
             )
         return sitk.ReadImage(file)
+
+    raise RuntimeError("Unsupported engine.")
 
 
 def load_multilabel_nifti(
@@ -112,7 +115,7 @@ def save_nifti(
     ndarray: np.ndarray,
     ref_image: Union[nib.Nifti1Image, sitk.Image],
     save_to: str,
-    dtype: np.dtype = np.uint8,
+    dtype: DTypeLike = np.uint8,
     engine: str = "nibabel",
 ) -> None:
     """
@@ -146,19 +149,17 @@ def save_nifti(
     """
 
     # Validate input types
-    assert isinstance(
-        ndarray, np.ndarray
-    ), "Invalid input: ndarray must be a numpy array."
-    assert engine in [
-        "nibabel",
-        "sitk",
-    ], "Invalid engine specified. Use 'nibabel' or 'sitk'."
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError("Invalid input: ndarray must be a numpy array.")
+    if engine not in ["nibabel", "sitk"]:
+        raise ValueError("Invalid engine specified. Use 'nibabel' or 'sitk'.")
 
     valid_dtypes = [np.uint8, np.int16, np.int32, np.float16, np.float32, np.float64]
-    assert dtype in valid_dtypes, f"Invalid dtype: must be one of {valid_dtypes}."
+    if dtype not in valid_dtypes:
+        raise ValueError(f"Invalid dtype: must be one of {valid_dtypes}.")
 
     try:
-        converted_array = ndarray.astype(dtype)
+        converted_array: np.ndarray = ndarray.astype(dtype)
     except (ValueError, TypeError) as e:
         raise ValueError(f"Unable to convert ndarray to dtype {dtype}: {e}")
 
@@ -187,10 +188,12 @@ def save_nifti(
             converted_array = converted_array.astype(np.float32)
 
         origin = ref_image.GetOrigin()
+        spacing = ref_image.GetSpacing()
         direction = ref_image.GetDirection()
 
         img = sitk.GetImageFromArray(converted_array)
         img.SetOrigin(origin)
+        img.SetSpacing(spacing)
         img.SetDirection(direction)
         sitk.WriteImage(img, save_to)
 
@@ -200,7 +203,7 @@ def save_multilabel_nifti(
     ref_image: nib.Nifti1Image,
     metadata: dict,
     save_to: str,
-    dtype: np.dtype = np.uint8,
+    dtype: DTypeLike = np.uint8,
 ) -> None:
     """
     Save a NIfTI image with multiple labels to a specified file using nibabel.
@@ -218,18 +221,18 @@ def save_multilabel_nifti(
             The NumPy data type to which the image data should be converted.
             Defaults to np.uint8.
     """
-    assert isinstance(
-        ndarray, np.ndarray
-    ), "Invalid input: ndarray must be a numpy array."
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError("Invalid input: ndarray must be a numpy array.")
 
     if not isinstance(ref_image, nib.Nifti1Image):
         raise TypeError("Only nibabel.Nifti1Image is supported.")
 
     valid_dtypes = [np.uint8, np.int16, np.int32, np.float16, np.float32, np.float64]
-    assert dtype in valid_dtypes, f"Invalid dtype: must be one of {valid_dtypes}."
+    if dtype not in valid_dtypes:
+        raise ValueError(f"Invalid dtype: must be one of {valid_dtypes}.")
 
     try:
-        converted_array = ndarray.astype(dtype)
+        converted_array: np.ndarray = ndarray.astype(dtype)
     except (ValueError, TypeError) as e:
         raise ValueError(f"Unable to convert ndarray to dtype {dtype}: {e}")
 
@@ -265,9 +268,8 @@ def add_metadata_to_nifti(img_in: nib.Nifti1Image, meta: dict) -> nib.Nifti1Imag
         The same NIfTI image with its header extended by the label metadata.
     """
 
-    assert isinstance(
-        img_in, nib.Nifti1Image
-    ), f"Input must be a nibabel.Nifti1Image, got {type(img_in)}"
+    if not isinstance(img_in, nib.Nifti1Image):
+        raise TypeError(f"Input must be a nibabel.Nifti1Image, got {type(img_in)}")
 
     data = np.asanyarray(img_in.dataobj)
     valid_labels = set(np.unique(data).astype(int))
@@ -535,7 +537,7 @@ def maybe_convert_nifti_image_in_dtype(
             The engine of the image. Can be 'nibabel' or 'sitk'. Defaults to 'nibabel'.
 
     Raises:
-        AssertionError
+        ValueError
             If the provided to_dtype is not valid.
         TypeError
             If the provided image is not of the expected type.
@@ -554,9 +556,10 @@ def maybe_convert_nifti_image_in_dtype(
         "uint8": np.uint8,
     }
 
-    assert (
-        to_dtype in dtype_mapping
-    ), f"Invalid to_dtype format. Must be one of {list(dtype_mapping.keys())}"
+    if to_dtype not in dtype_mapping:
+        raise ValueError(
+            f"Invalid to_dtype format. Must be one of {list(dtype_mapping.keys())}"
+        )
 
     if engine == "nibabel":
         if not isinstance(img, nib.Nifti1Image):
@@ -596,7 +599,7 @@ def maybe_convert_nifti_image_in_dtype(
         new_img.SetDirection(img.GetDirection())
         return new_img
 
-    return img
+    raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
 
 
 def get_image_orientation(
@@ -826,9 +829,9 @@ def split_image(
             # e.g. if axis=0, we slice [start_idx:end_idx, :, :, ...]
             slice_obj = [slice(None)] * len(shape)
             slice_obj[axis] = slice(start_idx, end_idx)
-            slice_obj = tuple(slice_obj)
+            slice_obj_t = tuple(slice_obj)
 
-            sub_data = data[slice_obj]
+            sub_data = data[slice_obj_t]
 
             new_affine = orig_affine.copy()
 
@@ -875,9 +878,9 @@ def split_image(
 
             slice_obj = [slice(None)] * len(shape)
             slice_obj[axis] = slice(start_idx, end_idx)
-            slice_obj = tuple(slice_obj)
+            slice_obj_t = tuple(slice_obj)
 
-            sub_data = data[slice_obj]
+            sub_data = data[slice_obj_t]
 
             sub_img = sitk.GetImageFromArray(sub_data)
 

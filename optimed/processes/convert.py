@@ -20,19 +20,12 @@ def convert_sitk_to_nibabel(sitk_image: sitk.Image) -> nib.Nifti1Image:
     Returns:
         nib.Nifti1Image: The NIfTI image object.
     """
-    assert isinstance(sitk_image, sitk.Image), "Input must be a SimpleITK image."
+    if not isinstance(sitk_image, sitk.Image):
+        raise TypeError("Input must be a SimpleITK image.")
 
-    data = sitk.GetArrayFromImage(sitk_image)
-    origin = np.array(sitk_image.GetOrigin())
-    spacing = np.array(sitk_image.GetSpacing())
+    from optimed.wrappers.nifti import sitk_to_nibabel
 
-    # Build a 4x4 affine matrix: spacing along the diagonal, origin as translation.
-    affine = np.eye(4)
-    affine[:3, :3] = np.diag(spacing)
-    affine[:3, 3] = origin
-
-    image = nib.Nifti1Image(data, affine)
-    return image
+    return sitk_to_nibabel(sitk_image)
 
 
 def convert_nibabel_to_sitk(nibabel_image: nib.Nifti1Image) -> sitk.Image:
@@ -45,19 +38,12 @@ def convert_nibabel_to_sitk(nibabel_image: nib.Nifti1Image) -> sitk.Image:
     Returns:
         sitk.Image: The SimpleITK image object.
     """
-    assert isinstance(nibabel_image, nib.Nifti1Image), "Input must be a NIfTI image."
+    if not isinstance(nibabel_image, nib.Nifti1Image):
+        raise TypeError("Input must be a NIfTI image.")
 
-    data = nibabel_image.get_fdata()
-    affine = nibabel_image.affine
+    from optimed.wrappers.nifti import nibabel_to_sitk
 
-    origin = affine[:3, 3]
-    spacing = np.linalg.norm(affine[:3, :3], axis=0)
-
-    image = sitk.GetImageFromArray(data)
-    image.SetOrigin(tuple(origin))
-    image.SetSpacing(tuple(spacing))
-
-    return image
+    return nibabel_to_sitk(nibabel_image)
 
 
 def convert_dcm_to_nifti(
@@ -66,7 +52,7 @@ def convert_dcm_to_nifti(
     permute_axes: bool = False,
     return_object: bool = True,
     return_type: str = "nibabel",
-) -> Union[nib.Nifti1Image, sitk.Image]:
+) -> Union[nib.Nifti1Image, sitk.Image, None]:
     """
     Converts a DICOM series to a NIfTI file.
 
@@ -74,17 +60,21 @@ def convert_dcm_to_nifti(
         dicom_path (str): Path to the input DICOM series.
         nifti_file (str): Path to the output NIfTI file.
         permute_axes (bool): If True, permute axes of the data.
-        return_object (bool): If True, return the NIfTI object
-        return_type (str): The return type of the function.
+        return_object (bool): If True, return the converted image object.
+        return_type (str): The return type: 'nibabel' or 'sitk'.
 
     Returns:
-        nib.Nifti1Image: The SimpleITK image object.
+        Union[nib.Nifti1Image, sitk.Image, None]: The converted image, or None if return_object is False.
     """
-    assert exists(dicom_path), f"Input file not found: {dicom_path}"
-    assert return_type in ["nibabel", "sitk"], "Invalid return type."
+    if not exists(dicom_path):
+        raise FileNotFoundError(f"Input file not found: {dicom_path}")
+    if return_type not in ["nibabel", "sitk"]:
+        raise ValueError("Invalid return type.")
 
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(dicom_path)
+    if not dicom_names:
+        raise ValueError(f"No DICOM series found in: {dicom_path}")
     reader.SetFileNames(dicom_names)
     image = reader.Execute()
     if permute_axes:
@@ -94,6 +84,7 @@ def convert_dcm_to_nifti(
     if return_object:
         converted_image = load_nifti(nifti_file, engine=return_type)
         return converted_image
+    return None
 
 
 def convert_nrrd_to_nifti(
@@ -101,21 +92,33 @@ def convert_nrrd_to_nifti(
     nifti_file: str,
     return_object: bool = True,
     return_type: str = "nibabel",
-) -> Union[nib.Nifti1Image, sitk.Image]:
+) -> Union[nib.Nifti1Image, sitk.Image, None]:
     """
     Convert a NRRD file to NIfTI format.
 
     Parameters:
-        nrrd_file (Union[str, object]): Path to the input NRRD file or the data and header.
+        nrrd_file (Union[str, object]): Path to the input NRRD file or a (data, header) tuple.
         nifti_file (str): Path to the output NIfTI file.
-        return_object (bool): If True, return the NIfTI object.
-        return_type (str): The return type of the function.
+        return_object (bool): If True, return the converted image object.
+        return_type (str): The return type: 'nibabel' or 'sitk'.
 
     Returns:
-        nib.Nifti1Image: The NIfTI image object.
+        Union[nib.Nifti1Image, sitk.Image, None]: The converted image, or None if return_object is False.
     """
-    assert exists(nrrd_file), f"Input file not found: {nrrd_file}"
-    assert return_type in ["nibabel", "sitk"], "Invalid return type."
+    if isinstance(nrrd_file, str):
+        if not exists(nrrd_file):
+            raise FileNotFoundError(f"Input file not found: {nrrd_file}")
+    else:
+        if not (
+            isinstance(nrrd_file, (tuple, list))
+            and len(nrrd_file) == 2
+            and isinstance(nrrd_file[1], dict)
+        ):
+            raise ValueError(
+                "nrrd_file must be a path or a tuple/list like (data, header_dict)."
+            )
+    if return_type not in ["nibabel", "sitk"]:
+        raise ValueError("Invalid return type.")
 
     if isinstance(nrrd_file, str):
         data, header = nrrd.read(nrrd_file)
@@ -151,38 +154,46 @@ def convert_nrrd_to_nifti(
     if return_object:
         converted_image = load_nifti(nifti_file, engine=return_type)
         return converted_image
+    return None
 
 
-def conver_mha_to_nifti(
+def convert_mha_to_nifti(
     mha_file: Union[str, object],
     nifti_file: str,
     return_object: bool = True,
     return_type: str = "nibabel",
-) -> Union[nib.Nifti1Image, sitk.Image]:
+) -> Union[nib.Nifti1Image, sitk.Image, None]:
     """
     Convert a MHA file to NIfTI format.
 
     Parameters:
-        mha_file (Union[str, object]): Path to the input MHA file or the SimpleITK image object.
+        mha_file (Union[str, object]): Path to the input MHA file or a SimpleITK.Image object.
         nifti_file (str): Path to the output NIfTI file.
-        return_object (bool): If True, return the NIfTI object.
-        return_type (str): The return type of the function.
+        return_object (bool): If True, return the converted image object.
+        return_type (str): The return type: 'nibabel' or 'sitk'.
 
     Returns:
-        nib.Nifti1Image: The SimpleITK image object.
+        Union[nib.Nifti1Image, sitk.Image, None]: The converted image, or None if return_object is False.
     """
-    assert exists(mha_file), f"Input file not found: {mha_file}"
-    assert return_type in ["nibabel", "sitk"], "Invalid return type."
+    if return_type not in ["nibabel", "sitk"]:
+        raise ValueError("Invalid return type.")
 
     if isinstance(mha_file, str):
+        if not exists(mha_file):
+            raise FileNotFoundError(f"Input file not found: {mha_file}")
         image = sitk.ReadImage(mha_file)
     else:
+        if not isinstance(mha_file, sitk.Image):
+            raise TypeError(
+                "mha_file must be a path to .mha/.mhd or a SimpleITK.Image."
+            )
         image = mha_file
     sitk.WriteImage(image, nifti_file)
 
     if return_object:
         converted_image = load_nifti(nifti_file, engine=return_type)
         return converted_image
+    return None
 
 
 def convert_nifti_to_nrrd(
@@ -210,13 +221,19 @@ def convert_nifti_to_nrrd(
         verbose (bool, optional):
             If True, print debug information.
     """
-    assert exists(input_nifti_filename), f"Input file not found: {input_nifti_filename}"
-    assert input_nifti_filename.endswith(".nii") or input_nifti_filename.endswith(
-        ".nii.gz"
-    ), "Input file must be a NIfTI file with .nii or .nii.gz extension."
-    assert output_seg_filename.endswith(
-        ".seg.nrrd"
-    ), "Output file must be a Slicer segmentation file with .seg.nrrd extension."
+    if not exists(input_nifti_filename):
+        raise FileNotFoundError(f"Input file not found: {input_nifti_filename}")
+    if not (
+        input_nifti_filename.endswith(".nii")
+        or input_nifti_filename.endswith(".nii.gz")
+    ):
+        raise ValueError(
+            "Input file must be a NIfTI file with .nii or .nii.gz extension."
+        )
+    if not output_seg_filename.endswith(".seg.nrrd"):
+        raise ValueError(
+            "Output file must be a Slicer segmentation file with .seg.nrrd extension."
+        )
 
     if segment_metadata is not None and not isinstance(segment_metadata, list):
         raise ValueError(

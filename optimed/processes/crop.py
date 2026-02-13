@@ -1,13 +1,16 @@
 from optimed.wrappers.nifti import load_nifti
 import nibabel as nib
 import numpy as np
-from typing import Union
+from typing import Union, Optional
 
 # Some code snippets are taken from TotalSegmentator (https://github.com/wasserth/TotalSegmentator/blob/master/totalsegmentator/cropping.py)
 
 
 def get_bbox_from_mask(
-    mask: np.ndarray, outside_value: int = -900, addon: int = 0, verbose: bool = True
+    mask: np.ndarray,
+    outside_value: int = -900,
+    addon: Union[int, list[int], np.ndarray] = 0,
+    verbose: bool = True,
 ) -> list:
     """
     Get bounding box coordinates from a mask.
@@ -21,8 +24,9 @@ def get_bbox_from_mask(
     Returns:
         list: The bounding box coordinates.
     """
-    if type(addon) is int:
+    if isinstance(addon, int):
         addon = [addon] * 3
+    addon_arr = np.asarray(addon, dtype=int)
     if (mask > outside_value).sum() == 0:
         if verbose:
             print("WARNING: Could not crop because no foreground detected")
@@ -31,12 +35,12 @@ def get_bbox_from_mask(
         minyidx, maxyidx = 0, mask.shape[2]
     else:
         mask_voxel_coords = np.where(mask > outside_value)
-        minzidx = int(np.min(mask_voxel_coords[0])) - addon[0]
-        maxzidx = int(np.max(mask_voxel_coords[0])) + 1 + addon[0]
-        minxidx = int(np.min(mask_voxel_coords[1])) - addon[1]
-        maxxidx = int(np.max(mask_voxel_coords[1])) + 1 + addon[1]
-        minyidx = int(np.min(mask_voxel_coords[2])) - addon[2]
-        maxyidx = int(np.max(mask_voxel_coords[2])) + 1 + addon[2]
+        minzidx = int(np.min(mask_voxel_coords[0])) - int(addon_arr[0])
+        maxzidx = int(np.max(mask_voxel_coords[0])) + 1 + int(addon_arr[0])
+        minxidx = int(np.min(mask_voxel_coords[1])) - int(addon_arr[1])
+        maxxidx = int(np.max(mask_voxel_coords[1])) + 1 + int(addon_arr[1])
+        minyidx = int(np.min(mask_voxel_coords[2])) - int(addon_arr[2])
+        maxyidx = int(np.max(mask_voxel_coords[2])) + 1 + int(addon_arr[2])
 
     # Avoid bbox to get out of image size
     s = mask.shape
@@ -53,7 +57,7 @@ def get_bbox_from_mask(
 def crop_to_bbox(
     data_or_image: Union[np.ndarray, nib.Nifti1Image],
     bbox: list,
-    dtype: np.dtype = None,
+    dtype: Optional[np.dtype] = None,
 ) -> Union[np.ndarray, nib.Nifti1Image]:
     """
     Crop either a NumPy array or a NIfTI image to a bounding box and adapt the affine if needed.
@@ -78,7 +82,8 @@ def crop_to_bbox(
         out_dtype = data_or_image.dataobj.dtype if dtype is None else dtype
         return nib.Nifti1Image(data_cropped.astype(out_dtype), affine)
     else:
-        assert data_or_image.ndim == 3, "only supports 3d images"
+        if data_or_image.ndim != 3:
+            raise ValueError("only supports 3d images")
         return data_or_image[
             bbox[0][0] : bbox[0][1], bbox[1][0] : bbox[1][1], bbox[2][0] : bbox[2][1]
         ]
@@ -87,9 +92,9 @@ def crop_to_bbox(
 def crop_to_mask(
     img_in: Union[str, nib.Nifti1Image],
     mask_img: Union[str, nib.Nifti1Image],
-    addon: list = [0, 0, 0],
-    dtype: np.dtype = None,
-    save_to: str = None,
+    addon: Optional[list] = None,
+    dtype: Optional[np.dtype] = None,
+    save_to: Optional[str] = None,
     verbose: bool = False,
 ) -> tuple:
     """
@@ -114,6 +119,9 @@ def crop_to_mask(
 
     mask = mask_img.get_fdata()
 
+    if addon is None:
+        addon = [0, 0, 0]
+
     addon = (np.array(addon) / img_in.header.get_zooms()).astype(int)  # mm to voxels
     bbox = get_bbox_from_mask(mask, outside_value=0, addon=addon, verbose=verbose)
 
@@ -129,7 +137,7 @@ def undo_crop(
     img: Union[str, nib.Nifti1Image],
     ref_img: Union[str, nib.Nifti1Image],
     bbox: list,
-    save_to: str = None,
+    save_to: Optional[str] = None,
 ) -> nib.Nifti1Image:
     """
     Fit the image which was cropped by bbox back into the shape of ref_img.
@@ -160,9 +168,9 @@ def undo_crop(
     return img_out
 
 
-def crop_by_xyz_boudaries(
+def crop_by_xyz_boundaries(
     img_in: Union[nib.Nifti1Image, str],
-    save_to: str = None,
+    save_to: Optional[str] = None,
     x_start: int = 0,
     x_end: int = 512,
     y_start: int = 0,
@@ -191,9 +199,31 @@ def crop_by_xyz_boudaries(
     """
     if isinstance(img_in, str):
         img_in = load_nifti(img_in, canonical=True, engine="nibabel")
+    elif not isinstance(img_in, nib.Nifti1Image):
+        raise TypeError("img_in must be a nib.Nifti1Image or a valid NIfTI path.")
 
     data = img_in.get_fdata()
-    affine = img_in.affine
+    shape = data.shape
+
+    boundaries = [x_start, x_end, y_start, y_end, z_start, z_end]
+    if not all(isinstance(v, int) for v in boundaries):
+        raise TypeError("Crop boundaries must be integers.")
+
+    if not (0 <= x_start < x_end <= shape[0]):
+        raise ValueError(
+            f"Invalid x boundaries: ({x_start}, {x_end}) for shape {shape}."
+        )
+    if not (0 <= y_start < y_end <= shape[1]):
+        raise ValueError(
+            f"Invalid y boundaries: ({y_start}, {y_end}) for shape {shape}."
+        )
+    if not (0 <= z_start < z_end <= shape[2]):
+        raise ValueError(
+            f"Invalid z boundaries: ({z_start}, {z_end}) for shape {shape}."
+        )
+
+    affine = np.copy(img_in.affine)
+    affine[:3, 3] = np.dot(affine, np.array([x_start, y_start, z_start, 1]))[:3]
     cropped_data = data[x_start:x_end, y_start:y_end, z_start:z_end]
     cropped_img = nib.Nifti1Image(cropped_data.astype(dtype), affine)
 

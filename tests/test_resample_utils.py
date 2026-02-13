@@ -5,9 +5,10 @@ from optimed.processes.resample import (
     change_spacing,
     change_spacing_of_affine,
     resample_img,
-    resample_img_cucim
+    resample_img_cucim,
 )
 from optimed import _cucim_available
+
 
 class TestResample(unittest.TestCase):
     def setUp(self):
@@ -25,7 +26,9 @@ class TestResample(unittest.TestCase):
     def test_change_spacing_with_target_shape(self):
         # Specify target_shape for precise shape change
         target_shape = (8, 8, 8)
-        img2 = change_spacing(self.img, new_spacing=2.0, target_shape=target_shape, order=0, nr_cpus=1)
+        img2 = change_spacing(
+            self.img, new_spacing=2.0, target_shape=target_shape, order=0, nr_cpus=1
+        )
         self.assertEqual(img2.shape, target_shape)
 
     def test_change_spacing_without_resampling(self):
@@ -55,6 +58,7 @@ class TestResample(unittest.TestCase):
         resampled = resample_img_cucim(self.data, zoom=zoom, order=0)
         expected_shape = tuple((np.array(self.data.shape) * zoom).round().astype(int))
         self.assertEqual(resampled.shape, expected_shape)
+
 
 if __name__ == "__main__":
     unittest.main()

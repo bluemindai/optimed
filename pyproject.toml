@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "optimed"
-version = "1.0.0a4"
+version = "1.0.0"
 description = "Optimed"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -43,6 +43,14 @@ exclude = [".venv-optimed", ".vscode", ".history", "local", ".github"]
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg'
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+follow_imports = "skip"
+no_implicit_optional = false
+check_untyped_defs = false
+warn_unused_ignores = false
 
 [project.optional-dependencies]
 gpu = [

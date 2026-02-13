@@ -1,5 +1,5 @@
 from optimed.wrappers.operations import exists, isfile
-from typing import Tuple
+from typing import Tuple, Optional, Union
 import numpy as np
 import nrrd
 import slicerio
@@ -11,7 +11,7 @@ def load_nrrd(
     file: str,
     data_only: bool = False,
     header_only: bool = False
-) -> Tuple[np.ndarray, dict]: # fmt: on
+) -> Union[np.ndarray, dict, Tuple[np.ndarray, dict]]: # fmt: on
     """
     Load a NRRD image from the specified file.
 
@@ -23,9 +23,12 @@ def load_nrrd(
     Returns:
         tuple: (data, header) or one of them depending on the parameters.
     """
-    assert exists(file), f"File does not exist: {file}"
-    assert isfile(file), f"{file} is not a file"
-    assert file.lower().endswith(".nrrd"), "Invalid file extension, expected '.nrrd'"
+    if not exists(file):
+        raise FileNotFoundError(f"File does not exist: {file}")
+    if not isfile(file):
+        raise ValueError(f"{file} is not a file")
+    if not file.lower().endswith(".nrrd"):
+        raise ValueError("Invalid file extension, expected '.nrrd'")
 
     try:
         data, header = nrrd.read(file)
@@ -57,11 +60,12 @@ def save_nrrd(
     Returns:
         None
     """
-    assert isinstance(ndarray, np.ndarray), "ndarray must be a numpy.ndarray object."
-    assert (
-        isinstance(compression_level, int) and 1 <= compression_level <= 9
-    ), "Compression level must be an integer between 1 and 9."
-    assert save_to.lower().endswith(".nrrd"), "Invalid file extension, expected '.nrrd'"
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError("ndarray must be a numpy.ndarray object.")
+    if not (isinstance(compression_level, int) and 1 <= compression_level <= 9):
+        raise ValueError("Compression level must be an integer between 1 and 9.")
+    if not save_to.lower().endswith(".nrrd"):
+        raise ValueError("Invalid file extension, expected '.nrrd'")
 
     default_header = {
         "encoding": "gzip",
@@ -94,7 +98,7 @@ def save_nrrd(
 
 def save_multilabel_nrrd_seg(
     ndarray: np.ndarray,
-    segment_metadata: list = None,
+    segment_metadata: Optional[list] = None,
     save_to: str = "segmentation.seg.nrrd",
 ) -> None:
     """
@@ -108,8 +112,10 @@ def save_multilabel_nrrd_seg(
     Returns:
         None
     """
-    assert isinstance(ndarray, np.ndarray), "ndarray must be a numpy.ndarray object."
-    assert save_to.endswith(".seg.nrrd"), "Invalid file extension, expected '.seg.nrrd'"
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError("ndarray must be a numpy.ndarray object.")
+    if not save_to.endswith(".seg.nrrd"):
+        raise ValueError("Invalid file extension, expected '.seg.nrrd'")
     if segment_metadata:
         for seg in segment_metadata:
             if not isinstance(seg, dict):
@@ -139,11 +145,17 @@ def save_multilabel_nrrd_seg(
         """Generate a random RGB color with values between 0 and 1."""
         return [round(random.random(), 2) for _ in range(3)]
 
+    if segment_metadata is None:
+        segment_metadata = []
+
     for seg in segment_metadata:
         if "color" not in seg:
             seg["color"] = _random_color()
 
-    # Assign metadata to the segmentation dictionary
-    ndarray["segments"] = segment_metadata
+    # Build a segmentation dict expected by slicerio
+    segmentation = {
+        "voxels": ndarray,
+        "segments": segment_metadata,
+    }
 
-    slicerio.write_segmentation(save_to, ndarray)
+    slicerio.write_segmentation(save_to, segmentation)

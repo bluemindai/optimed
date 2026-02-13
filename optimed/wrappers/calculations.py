@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any
 import numpy as np
 import warnings
 
@@ -34,7 +34,7 @@ try:
     from cupyx.scipy.ndimage import center_of_mass as _scipy_center_of_mass_gpu
 except ImportError:
     # Fallback to CPU versions
-    _cupy_available = None  # noqa
+    _cupy_available = False  # noqa
 
 
 def _ensure_numpy(array):
@@ -308,7 +308,7 @@ def scipy_median_filter(
 
 
 def scipy_minimum(
-    input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True
+    input: np.ndarray, labels: np.ndarray, index: Any, use_gpu: bool = True
 ) -> np.ndarray:
     """
     Finds the minimum value of 'input' within the regions defined by 'labels' for a given index.
@@ -338,7 +338,7 @@ def scipy_minimum(
 
 
 def scipy_sum(
-    input: np.ndarray, labels: np.ndarray, index: int, use_gpu: bool = True
+    input: np.ndarray, labels: np.ndarray, index: Any, use_gpu: bool = True
 ) -> np.ndarray:
     """
     Computes the sum of the input values within the regions defined by 'labels' for a given index.
@@ -407,7 +407,7 @@ def filter_mask(
 def scipy_center_of_mass(
     input: np.ndarray,
     labels: np.ndarray = None,
-    index: int = None,
+    index: Any = None,
     use_gpu: bool = True,
 ) -> np.ndarray:
     """

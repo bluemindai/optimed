@@ -9,13 +9,13 @@ from optimed.wrappers.calculations import (
 from optimed import _cupy_available
 from typing import Union
 import numpy as np
-import skimage
+from skimage.segmentation import expand_labels
 
 try:
     import cupy as cp
 except ImportError:
     # Fallback to CPU versions
-    _cupy_available = None  # noqa
+    _cupy_available = False  # noqa
 
 
 def if_touches_border_3d(mask: np.ndarray, use_gpu: bool = True) -> bool:
@@ -31,6 +31,7 @@ def if_touches_border_3d(mask: np.ndarray, use_gpu: bool = True) -> bool:
         bool: True if the mask touches any border, otherwise False.
     """
     if use_gpu and _cupy_available:
+        xp = cp
         mask = cp.array(mask)
     else:
         xp = np
@@ -57,6 +58,7 @@ def if_touches_border_2d(mask: np.ndarray, use_gpu: bool = True) -> bool:
         bool: True if the mask touches any border, otherwise False.
     """
     if use_gpu and _cupy_available:
+        xp = cp
         mask = cp.array(mask)
     else:
         xp = np
@@ -139,16 +141,16 @@ def find_component_by_point(
     if use_gpu and _cupy_available:
         components = cp.array(components)
 
-    target_point = tuple(int(coord) for coord in target_point)
-    label_at_point = components[target_point]
+    target_point_idx = tuple(int(coord) for coord in target_point)
+    label_at_point = components[target_point_idx]
     if label_at_point != 0:
-        return label_at_point
+        return int(label_at_point)
     return None
 
 
 def delete_small_segments(
     binary_mask: np.ndarray,
-    interval: list = [10, np.inf],
+    interval: list = None,
     use_gpu: bool = True,
     verbose: bool = True,
 ) -> np.ndarray:
@@ -157,12 +159,15 @@ def delete_small_segments(
 
     Parameters:
         binary_mask (ndarray) : Binary image.
-        interval (list) : Boundaries of the sizes to remove.
+        interval (list, optional) : Boundaries of the sizes to remove. Defaults to [10, np.inf].
         use_gpu (bool, optional): Whether to use GPU acceleration if available.
         verbose (bool, optional): Show debug information.
     Returns:
         np.ndarray: Filtered blobs.
     """
+    if interval is None:
+        interval = [10, np.inf]
+
     if verbose:
         print("[postprocessing] deleting small components")
 
@@ -225,8 +230,8 @@ def delete_segments_disconnected_from_point(
     if num_labels == 0:
         return binary_mask
 
-    target_point = tuple(int(coord) for coord in target_point)
-    label_at_point = labeled[target_point]
+    target_point_idx = tuple(int(coord) for coord in target_point)
+    label_at_point = labeled[target_point_idx]
     if label_at_point == 0:
         if verbose:
             print(
@@ -422,6 +427,10 @@ def delete_nearby_segments_with_buffer(
 
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
+        parent_mask = cp.array(parent_mask)
 
     if not xp.any(binary_mask):
         return binary_mask
@@ -442,9 +451,7 @@ def delete_nearby_segments_with_buffer(
         if not isinstance(component_mask, np.ndarray):
             component_mask = component_mask.get()
 
-        buffered_mask = skimage.segmentation.expand_labels(
-            component_mask, distance_threshold
-        )
+        buffered_mask = expand_labels(component_mask, distance_threshold)
 
         if xp.sum(xp.array(buffered_mask) * xp.array(parent_mask)) > 0:
             binary_mask[component_mask] = 0
@@ -538,6 +545,9 @@ def fill_holes_2d(
 
     if not use_gpu or not _cupy_available:
         xp = np
+    else:
+        xp = cp
+        binary_mask = cp.array(binary_mask)
 
     holes_labeled, num_labels = scipy_label(~xp.array(binary_mask), use_gpu=use_gpu)
     counts = xp.bincount(xp.array(holes_labeled).ravel())
