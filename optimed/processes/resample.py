@@ -45,28 +45,31 @@ def change_spacing(
 
     data = img_in.get_fdata()  # quite slow
     old_shape = np.array(data.shape)
-    img_spacing = np.array(img_in.header.get_zooms())
+    spatial_dims = min(data.ndim, 3)
+    spatial_shape = old_shape[:spatial_dims]
+    img_spacing = np.array(img_in.header.get_zooms()[:spatial_dims], dtype=float)
 
-    if len(img_spacing) == 4:
-        img_spacing = img_spacing[:3]  # for 4D images only use spacing of first 3 dims
-
-    if isinstance(new_spacing, float):
-        new_spacing_np = np.array([new_spacing] * 3, dtype=float)  # for 3D and 4D
+    if new_spacing is None:
+        new_spacing_np = None
+    elif np.isscalar(new_spacing):
+        new_spacing_np = np.array([new_spacing] * spatial_dims, dtype=float)
     else:
         new_spacing_np = np.array(new_spacing, dtype=float)
-
-    if len(old_shape) == 2:
-        img_spacing = np.array(
-            list(img_spacing)
-            + [
-                new_spacing_np[2],
-            ]
-        )
+        if len(new_spacing_np) < spatial_dims:
+            raise ValueError(
+                f"new_spacing must have at least {spatial_dims} values for this image."
+            )
+        new_spacing_np = new_spacing_np[:spatial_dims]
 
     if target_shape is not None:
         # Find the right zoom to exactly reach the target_shape.
         # We also have to adapt the spacing to this new zoom.
-        zoom = np.array(target_shape) / old_shape
+        target_shape_np = np.array(target_shape, dtype=float)
+        if len(target_shape_np) < spatial_dims:
+            raise ValueError(
+                f"target_shape must have at least {spatial_dims} values for this image."
+            )
+        zoom = target_shape_np[:spatial_dims] / spatial_shape
         new_spacing_np = img_spacing / zoom
     else:
         zoom = img_spacing / new_spacing_np
@@ -85,10 +88,12 @@ def change_spacing(
 
     # This is the proper solution
     # Scale each column vector by the zoom of this dimension
+    zoom_affine = np.ones(3)
+    zoom_affine[:spatial_dims] = zoom
     new_affine = np.copy(img_in.affine)
-    new_affine[:3, 0] = new_affine[:3, 0] / zoom[0]
-    new_affine[:3, 1] = new_affine[:3, 1] / zoom[1]
-    new_affine[:3, 2] = new_affine[:3, 2] / zoom[2]
+    new_affine[:3, 0] = new_affine[:3, 0] / zoom_affine[0]
+    new_affine[:3, 1] = new_affine[:3, 1] / zoom_affine[1]
+    new_affine[:3, 2] = new_affine[:3, 2] / zoom_affine[2]
 
     # Just for information: How to get spacing from affine with rotation:
     # Calc length of each column vector:
@@ -98,6 +103,8 @@ def change_spacing(
     if (_cupy_available and _cucim_available) and use_gpu:
         new_data = resample_img_cucim(data, zoom=zoom, order=order)  # gpu resampling
     else:
+        if data.ndim == 2:
+            zoom = np.array([zoom[0], zoom[1], 1.0])
         new_data = resample_img(
             data, zoom=zoom, order=order, nr_cpus=nr_cpus
         )  # cpu resampling
@@ -180,6 +187,17 @@ def resample_img(
     return img_sm
 
 
+def _target_shape(shape: tuple[int, ...], zoom: float | np.ndarray) -> tuple[int, ...]:
+    zoom_arr = np.asarray(zoom, dtype=float)
+    if zoom_arr.ndim == 0:
+        zoom_arr = np.repeat(zoom_arr, len(shape))
+    if len(zoom_arr) != len(shape):
+        raise ValueError(
+            f"zoom must be a scalar or have length {len(shape)} for shape {shape}."
+        )
+    return tuple((np.asarray(shape) * zoom_arr).round().astype(np.int32).tolist())
+
+
 def resample_img_cucim(
     img: np.ndarray,
     zoom: float = 0.5,
@@ -208,10 +226,35 @@ def resample_img_cucim(
     from cucim.skimage.transform import resize
 
     img = cp.asarray(img)
-    new_shape = tuple((np.array(img.shape) * zoom).round().astype(np.int32).tolist())
-    resampled_img = resize(
-        img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False
-    )  # very fast
+    dim = len(img.shape)
+
+    if dim == 4:
+        new_shape = _target_shape(img.shape[:3], zoom)
+        resampled_img = cp.stack(
+            [
+                resize(
+                    img[:, :, :, channel],
+                    output_shape=new_shape,
+                    order=order,
+                    mode="edge",
+                    anti_aliasing=False,
+                )
+                for channel in range(img.shape[3])
+            ],
+            axis=3,
+        )
+    elif dim == 2:
+        zoom_arr = np.asarray(zoom)
+        new_shape = _target_shape(img.shape, zoom_arr[:2] if zoom_arr.ndim else zoom)
+        resampled_img = resize(
+            img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False
+        )
+    else:
+        new_shape = _target_shape(img.shape, zoom)
+        resampled_img = resize(
+            img, output_shape=new_shape, order=order, mode="edge", anti_aliasing=False
+        )
+
     resampled_img = cp.asnumpy(
         resampled_img
     )  # Alternative: img_arr = np.float32(resampled_img.get())   # very fast

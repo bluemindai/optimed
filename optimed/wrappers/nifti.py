@@ -330,44 +330,20 @@ def sitk_to_nibabel(img_sitk: sitk.Image) -> nib.Nifti1Image:
     """
     Converts a SimpleITK.Image to a nibabel.Nifti1Image, correctly forming the affine matrix.
     """
-    data = sitk.GetArrayFromImage(img_sitk)  # shape: [D, H, W]
+    dim = img_sitk.GetDimension()
+    if dim > 3:
+        raise ValueError("Only 2D and 3D SimpleITK images are supported.")
 
-    # Extract parameters from SimpleITK
-    origin = img_sitk.GetOrigin()  # (Ox, Oy, Oz)
-    spacing = img_sitk.GetSpacing()  # (Sx, Sy, Sz)
-    direction = img_sitk.GetDirection()  # length 9 (3x3)
+    data = sitk.GetArrayFromImage(img_sitk)
+    data = np.transpose(data, axes=tuple(reversed(range(dim))))
 
-    # Create the affine matrix:
-    # direction = [d00, d01, d02, d10, d11, d12, d20, d21, d22]
-    # We need a 4x4 matrix:
-    # [ d00*Sx, d01*Sy, d02*Sz, Ox ]
-    # [ d10*Sx, d11*Sy, d12*Sz, Oy ]
-    # [ d20*Sx, d21*Sy, d22*Sz, Oz ]
-    # [   0,      0,      0,    1 ]
-    affine = np.array(
-        [
-            [
-                direction[0] * spacing[0],
-                direction[3] * spacing[1],
-                direction[6] * spacing[2],
-                origin[0],
-            ],
-            [
-                direction[1] * spacing[0],
-                direction[4] * spacing[1],
-                direction[7] * spacing[2],
-                origin[1],
-            ],
-            [
-                direction[2] * spacing[0],
-                direction[5] * spacing[1],
-                direction[8] * spacing[2],
-                origin[2],
-            ],
-            [0, 0, 0, 1],
-        ],
-        dtype=np.float64,
-    )
+    origin = np.asarray(img_sitk.GetOrigin(), dtype=np.float64)
+    spacing = np.asarray(img_sitk.GetSpacing(), dtype=np.float64)
+    direction = np.asarray(img_sitk.GetDirection(), dtype=np.float64).reshape(dim, dim)
+
+    affine = np.eye(4, dtype=np.float64)
+    affine[:dim, :dim] = direction @ np.diag(spacing)
+    affine[:dim, 3] = origin
 
     img_nib = nib.Nifti1Image(data, affine)
     return img_nib
@@ -377,44 +353,25 @@ def nibabel_to_sitk(img_nib: nib.Nifti1Image) -> sitk.Image:
     """
     Converts a nibabel.Nifti1Image to a SimpleITK.Image, restoring origin, spacing, and direction.
     """
-    data = img_nib.get_fdata(dtype=np.float32)
+    data = np.asanyarray(img_nib.dataobj)
+    dim = min(data.ndim, 3)
+    if dim < 2:
+        raise ValueError("Only 2D and 3D nibabel images are supported.")
+    data = np.transpose(
+        data, axes=tuple(reversed(range(dim))) + tuple(range(dim, data.ndim))
+    )
     affine = img_nib.affine
 
-    # Extract spacing, direction, and origin from the affine matrix:
-    origin = affine[:3, 3]
+    spatial_affine = affine[:dim, :dim]
+    spacing = np.linalg.norm(spatial_affine, axis=0)
+    if np.any(spacing == 0):
+        raise ValueError("Affine contains a zero-length spatial axis.")
+    direction = spatial_affine / spacing
 
-    # Extract direction vectors
-    dxx, dxy, dxz = affine[0, 0], affine[0, 1], affine[0, 2]
-    dyx, dyy, dyz = affine[1, 0], affine[1, 1], affine[1, 2]
-    dzx, dzy, dzz = affine[2, 0], affine[2, 1], affine[2, 2]
-
-    # Calculate spacing as the magnitude of the vectors
-    sx = np.sqrt(dxx**2 + dyx**2 + dzx**2)
-    sy = np.sqrt(dxy**2 + dyy**2 + dzy**2)
-    sz = np.sqrt(dxz**2 + dyz**2 + dzz**2)
-
-    spacing = (sx, sy, sz)
-
-    # Normalize direction vectors
-    if sx != 0:
-        dxx /= sx
-        dyx /= sx
-        dzx /= sx
-    if sy != 0:
-        dxy /= sy
-        dyy /= sy
-        dzy /= sy
-    if sz != 0:
-        dxz /= sz
-        dyz /= sz
-        dzz /= sz
-
-    direction = [dxx, dxy, dxz, dyx, dyy, dyz, dzx, dzy, dzz]
-
-    img_sitk = sitk.GetImageFromArray(data)  # SimpleITK always uses [z, y, x]
-    img_sitk.SetOrigin(origin)
-    img_sitk.SetSpacing(spacing)
-    img_sitk.SetDirection(direction)
+    img_sitk = sitk.GetImageFromArray(data)
+    img_sitk.SetOrigin(tuple(float(v) for v in affine[:dim, 3]))
+    img_sitk.SetSpacing(tuple(float(v) for v in spacing))
+    img_sitk.SetDirection(tuple(float(v) for v in direction.ravel()))
 
     return img_sitk
 
@@ -450,13 +407,9 @@ def as_closest_canonical(
         if not isinstance(img, sitk.Image):
             raise TypeError("Expected a SimpleITK.Image for engine 'sitk'")
 
-        # For SimpleITK, we assume the canonical orientation is RAS (Right-Anterior-Superior).
-        # This involves setting the direction matrix to the identity matrix.
-        img_canonical = sitk.Image(img)
-        identity_direction = [1, 0, 0, 0, 1, 0, 0, 0, 1]  # RAS direction matrix
-        img_canonical.SetDirection(identity_direction)
-
-        return img_canonical
+        img_nib = sitk_to_nibabel(img)
+        img_canonical = nib.as_closest_canonical(img_nib)
+        return nibabel_to_sitk(img_canonical)
 
     else:
         raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
@@ -510,12 +463,10 @@ def undo_canonical(
                 "Expected both images to be SimpleITK.Image for engine 'sitk'"
             )
 
-        img_reverted = sitk.Image(img_can)
-
-        # Restore the original direction matrix from the original image
-        img_reverted.SetDirection(img_orig.GetDirection())
-
-        return img_reverted
+        img_can_nib = sitk_to_nibabel(img_can)
+        img_orig_nib = sitk_to_nibabel(img_orig)
+        img_reverted = undo_canonical(img_can_nib, img_orig_nib, engine="nibabel")
+        return nibabel_to_sitk(img_reverted)
 
     else:
         raise ValueError("Unsupported engine. Use 'nibabel' or 'sitk'.")
@@ -886,10 +837,11 @@ def split_image(
 
             # The offset in voxel space along `axis` is `start_idx`
             # Convert that to a physical offset by direction * spacing
-            # SITK's axis=0 => row in direction matrix = dir_mat[:, 0], etc.
+            # NumPy array axes are reversed relative to SimpleITK index axes.
             new_origin = origin.copy()
             if axis < dim:  # only apply offset if axis < 3 in a 3D scenario
-                offset_vec = dir_mat[:, axis] * (start_idx * spacing[axis])
+                sitk_axis = dim - 1 - axis
+                offset_vec = dir_mat[:, sitk_axis] * (start_idx * spacing[sitk_axis])
                 new_origin = origin + offset_vec
 
             sub_img.SetSpacing(tuple(spacing))

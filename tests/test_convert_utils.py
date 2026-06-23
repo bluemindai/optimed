@@ -53,7 +53,7 @@ class TestConvert(unittest.TestCase):
 
         # Check that the output is a nibabel NIfTI image and that the data is preserved.
         self.assertIsInstance(nib_image, nib.Nifti1Image)
-        np.testing.assert_allclose(nib_image.get_fdata(), data)
+        np.testing.assert_allclose(nib_image.get_fdata(), np.transpose(data, (2, 1, 0)))
 
     def test_convert_nibabel_to_sitk(self):
         # Create a dummy nibabel image.
@@ -67,7 +67,9 @@ class TestConvert(unittest.TestCase):
 
         # Check that the result is a SimpleITK image and that the image data is preserved.
         self.assertTrue(isinstance(sitk_image, sitk.Image))
-        np.testing.assert_allclose(sitk.GetArrayFromImage(sitk_image), data)
+        np.testing.assert_allclose(
+            sitk.GetArrayFromImage(sitk_image), np.transpose(data, (2, 1, 0))
+        )
 
     def test_convert_dcm_to_nifti(self):
         # Temporarily override SimpleITK's ImageSeriesReader to simulate DICOM reading.

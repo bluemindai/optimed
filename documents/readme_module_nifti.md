@@ -6,52 +6,64 @@ This module now offers comprehensive utilities for working with NIfTI images usi
 
 ## Functions
 
-### 1. `load_nifti(file: str, canonical: bool=False, engine: str='nibabel') -> object`
+### 1. `load_nifti(file: str, canonical: bool = False, mmap: bool = False, engine: str = "nibabel") -> object`
 Loads a NIfTI image from a specified file using either `nibabel` or `SimpleITK`.
 - **Returns**: A `nibabel.Nifti1Image` or `SimpleITK.Image` object depending on the engine.
 
 ---
 
-### 2. `save_nifti(ndarray: np.ndarray, ref_image: object, dtype: np.dtype, save_to: str, engine: str='nibabel') -> None`
+### 2. `save_nifti(ndarray: np.ndarray, ref_image: object, save_to: str, dtype: np.dtype = np.uint8, engine: str = "nibabel") -> None`
 Saves a NIfTI image to a specified file using metadata from a reference image.
 - **Returns**: None
 
 ---
 
-### 3. `as_closest_canonical(img: object, engine: str = 'nibabel') -> object`
+### 3. `sitk_to_nibabel(img_sitk: sitk.Image) -> nib.Nifti1Image`
+Converts a `SimpleITK.Image` to a `nibabel.Nifti1Image`, including axis-order conversion from SimpleITK array order (`z, y, x`) to nibabel data order (`x, y, z`) and affine construction from origin, spacing, and direction.
+- **Returns**: A `nibabel.Nifti1Image`.
+
+---
+
+### 4. `nibabel_to_sitk(img_nib: nib.Nifti1Image) -> sitk.Image`
+Converts a `nibabel.Nifti1Image` to a `SimpleITK.Image`, including axis-order conversion from nibabel data order (`x, y, z`) to SimpleITK array order (`z, y, x`) and restoration of origin, spacing, and direction from the affine.
+- **Returns**: A `SimpleITK.Image`.
+
+---
+
+### 5. `as_closest_canonical(img: object, engine: str = 'nibabel') -> object`
 Converts a NIfTI image to its closest canonical orientation (for both `nibabel` and `SimpleITK`).
 - **Returns**: A new image transformed to the closest canonical orientation.
 
 ---
 
-### 4. `undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -> object`
+### 6. `undo_canonical(img_can: object, img_orig: object, engine: str = 'nibabel') -> object`
 Reverts a NIfTI image from its canonical orientation back to its original orientation.
 - **Returns**: The image reverted to its original orientation.
 
 ---
 
-### 5. `maybe_convert_nifti_image_in_dtype(img: object, to_dtype: str, engine: str='nibabel') -> object`
+### 7. `maybe_convert_nifti_image_in_dtype(img: object, to_dtype: str, engine: str='nibabel') -> object`
 Converts a NIfTI image to a specified data type if necessary.
 - **Returns**: The converted image or the original if no conversion was needed.
 
 ---
 
-### 6. `get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, str, str]`
+### 8. `get_image_orientation(img: object, engine: str = 'nibabel') -> Tuple[str, str, str]`
 Retrieves the orientation of a NIfTI image in terms of axes (e.g., `'R'`, `'A'`, `'S'` for Right-Anterior-Superior).
 - **Returns**: A tuple representing the orientation axes of the image.
 
 ---
 
-### 7. `empty_img_like(ref: object, engine: str = 'nibabel') -> object`
+### 9. `empty_img_like(ref: object, engine: str = 'nibabel') -> object`
 Creates an empty NIfTI image with the same dimensions and affine transformation as the reference image, filled with zeros.
 - **Returns**: A new empty image with the same shape and metadata as the reference.
 
 ---
-### 8. `split_image(img: object, parts: int, axis: int = 0) -> List[object]`
+### 10. `split_image(img: object, parts: int, axis: int = 0) -> List[object]`
 Splits a NIfTI image (nibabel or SimpleITK) into multiple parts along the specified axis.
 - **Returns**: A list of sub-images, each representing a part of the original image.
   - If the input image is nibabel, the list contains nib.Nifti1Image objects.
-  - If the input image is SimpleITK, the list contains sitk.Image objects.
+  - If the input image is SimpleITK, the list contains sitk.Image objects and `axis` refers to the SimpleITK array axis order (`z, y, x` for 3D images).
 
 ---
 
@@ -67,7 +79,7 @@ canonical_img = as_closest_canonical(img, engine='nibabel')
 
 converted_img = maybe_convert_nifti_image_in_dtype(canonical_img, to_dtype='int32', engine='nibabel')
 
-save_nifti(converted_img.get_fdata(), canonical_img, np.int32, 'output_image.nii.gz', engine='nibabel')
+save_nifti(converted_img.get_fdata(), canonical_img, 'output_image.nii.gz', dtype=np.int32, engine='nibabel')
 ```
 
 ## License

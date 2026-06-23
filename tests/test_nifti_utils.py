@@ -9,7 +9,9 @@ from optimed.wrappers.nifti import (
     get_image_orientation,
     load_nifti,
     maybe_convert_nifti_image_in_dtype,
+    nibabel_to_sitk,
     save_nifti,
+    sitk_to_nibabel,
     split_image,
     undo_canonical,
 )
@@ -171,6 +173,42 @@ class TestNiftiFunctions(unittest.TestCase):
         )
         self.assertEqual(reverted_img_sitk.GetDirection(), ref_img_sitk.GetDirection())
 
+    def test_sitk_nibabel_roundtrip_preserves_non_cubic_geometry(self):
+        data = np.arange(2 * 3 * 4, dtype=np.float32).reshape(2, 3, 4)
+        img = sitk.GetImageFromArray(data)
+        img.SetOrigin((10.0, 20.0, 30.0))
+        img.SetSpacing((1.0, 2.0, 3.0))
+        img.SetDirection((0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0))
+
+        nib_img = sitk_to_nibabel(img)
+        self.assertEqual(nib_img.shape, img.GetSize())
+        np.testing.assert_array_equal(
+            nib_img.get_fdata(dtype=np.float32), np.transpose(data, (2, 1, 0))
+        )
+
+        roundtrip = nibabel_to_sitk(nib_img)
+        np.testing.assert_array_equal(sitk.GetArrayFromImage(roundtrip), data)
+        self.assertEqual(roundtrip.GetOrigin(), img.GetOrigin())
+        self.assertEqual(roundtrip.GetSpacing(), img.GetSpacing())
+        self.assertEqual(roundtrip.GetDirection(), img.GetDirection())
+
+    def test_as_closest_canonical_sitk_reorients_data(self):
+        data = np.arange(2 * 3 * 4, dtype=np.float32).reshape(2, 3, 4)
+        img = sitk.GetImageFromArray(data)
+        img.SetDirection((-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))
+
+        expected = nib.as_closest_canonical(sitk_to_nibabel(img))
+        actual = sitk_to_nibabel(as_closest_canonical(img, engine="sitk"))
+
+        np.testing.assert_array_equal(actual.get_fdata(), expected.get_fdata())
+        np.testing.assert_allclose(actual.affine, expected.affine)
+
+        reverted = undo_canonical(
+            as_closest_canonical(img, engine="sitk"), img, engine="sitk"
+        )
+        np.testing.assert_array_equal(sitk.GetArrayFromImage(reverted), data)
+        self.assertEqual(reverted.GetDirection(), img.GetDirection())
+
     def test_invalid_engine(self):
         with self.assertRaises(ValueError):
             load_nifti("fake_path.nii.gz", engine="invalid_engine")
@@ -200,6 +238,8 @@ class TestNiftiFunctions(unittest.TestCase):
     def test_split_image_sitk(self):
         data = np.random.rand(10, 10, 10).astype(np.float32)
         img = sitk.GetImageFromArray(data)
+        img.SetOrigin((1.0, 2.0, 3.0))
+        img.SetSpacing((2.0, 3.0, 4.0))
 
         parts = 2
         split_imgs = split_image(img, parts, axis=0)
@@ -212,6 +252,8 @@ class TestNiftiFunctions(unittest.TestCase):
             self.assertEqual(
                 sitk.GetArrayFromImage(split_img).shape, tuple(expected_shape)
             )
+        self.assertEqual(split_imgs[0].GetOrigin(), img.GetOrigin())
+        self.assertEqual(split_imgs[1].GetOrigin(), (1.0, 2.0, 23.0))
 
 
 if __name__ == "__main__":

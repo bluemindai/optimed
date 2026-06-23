@@ -1,7 +1,8 @@
 --extra-index-url https://pypi.nvidia.com
 
 cupy-cuda12x==13.0.0
-pylibraft-cu12==24.8.1 
+cucim-cu12==24.8.0
+pylibraft-cu12==24.8.1
 numpy==2.3.3
 nibabel==5.3.2
 slicerio==1.1.2

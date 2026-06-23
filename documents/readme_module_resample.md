@@ -5,20 +5,20 @@ This module provides functions for resampling medical images with support for bo
 
 ## Functions
 
-### 1. `change_spacing(image: Nifti1Image, new_spacing: Union[float, Tuple[float, float, float]], order: int = 1, nr_cpus: int = 4, use_gpu: bool = False) -> Nifti1Image`
+### 1. `change_spacing(img_in: nib.Nifti1Image, new_spacing: Union[float, list[float], np.ndarray] = 1.25, target_shape: Optional[tuple] = None, order: int = 0, nr_cpus: int = 1, dtype: Optional[np.dtype] = None, remove_negative: bool = False, force_affine: Optional[np.ndarray] = None, use_gpu: bool = True) -> nib.Nifti1Image`
 Resamples a NIfTI image to a new voxel spacing or target shape.
 - **Returns**: The resampled NIfTI image.
 
-### 2. `change_spacing_of_affine(affine: np.ndarray, zoom: float) -> np.ndarray`
+### 2. `change_spacing_of_affine(affine: np.ndarray, zoom: float = 0.5) -> np.ndarray`
 Adjusts the affine matrix to account for the specified zoom factor.
 - **Returns**: The modified affine matrix.
 
-### 3. `resample_img(img: np.ndarray, new_shape: Tuple[int, int, int], order: int = 1, nr_cpus: int = 4) -> np.ndarray`
-Resamples a NumPy image using SciPy with parallel processing support.
+### 3. `resample_img(img: np.ndarray, zoom: float = 0.5, order: int = 0, nr_cpus: int = -1) -> np.ndarray`
+Resamples a 2D, 3D, or 4D NumPy image using SciPy with parallel processing support.
 - **Returns**: The resampled image.
 
-### 4. `resample_img_cucim(img: np.ndarray, new_shape: Tuple[int, int, int], order: int = 1) -> np.ndarray`
-Resamples an image using cuCIM for accelerated GPU processing.
+### 4. `resample_img_cucim(img: np.ndarray, zoom: float = 0.5, order: int = 0) -> np.ndarray`
+Resamples a 2D, 3D, or 4D image using cuCIM for accelerated GPU processing.
 - **Returns**: The resampled image.
 
 ## Usage Example

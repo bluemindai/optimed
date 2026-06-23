@@ -7,14 +7,14 @@ This module provides a set of functions to convert medical image formats between
 
 ### 1. `convert_sitk_to_nibabel(sitk_image: sitk.Image) -> nib.Nifti1Image`
 Converts a SimpleITK image to a NIfTI image.
-- Additional Info: Extracts image data using SimpleITK and constructs a nibabel image with the appropriate affine.
+- Additional Info: Converts SimpleITK array order (`z, y, x`) to nibabel data order (`x, y, z`) and constructs a nibabel affine from origin, spacing, and direction.
 - **Returns**: A NIfTI image.
 
 ---
 
 ### 2. `convert_nibabel_to_sitk(nibabel_image: nib.Nifti1Image) -> sitk.Image`
 Converts a NIfTI image to a SimpleITK image.
-- Additional Info: Restores origin, spacing, and direction from the nibabel affine.
+- Additional Info: Converts nibabel data order (`x, y, z`) to SimpleITK array order (`z, y, x`) and restores origin, spacing, and direction from the nibabel affine.
 - **Returns**: A SimpleITK image.
 
 ---

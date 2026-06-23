@@ -18,6 +18,12 @@ except ImportError:
     _cupy_available = False  # noqa
 
 
+def _ensure_numpy(array):
+    if hasattr(array, "get"):
+        return array.get()
+    return array
+
+
 def if_touches_border_3d(mask: np.ndarray, use_gpu: bool = True) -> bool:
     """
     Check if the 3d mask touches any of the borders.
@@ -40,7 +46,9 @@ def if_touches_border_3d(mask: np.ndarray, use_gpu: bool = True) -> bool:
         raise ValueError("Mask must be 3-dimensional.")
 
     for axis in range(3):
-        if xp.any(mask.take(0, axis=axis)) or xp.any(mask.take(-1, axis=axis)):
+        if bool(_ensure_numpy(xp.any(mask.take(0, axis=axis)))) or bool(
+            _ensure_numpy(xp.any(mask.take(-1, axis=axis)))
+        ):
             return True
     return False
 
@@ -67,10 +75,10 @@ def if_touches_border_2d(mask: np.ndarray, use_gpu: bool = True) -> bool:
         raise ValueError("Mask must be 2-dimensional.")
 
     if (
-        xp.any(mask[0, :])
-        or xp.any(mask[-1, :])
-        or xp.any(mask[:, 0])
-        or xp.any(mask[:, -1])
+        bool(_ensure_numpy(xp.any(mask[0, :])))
+        or bool(_ensure_numpy(xp.any(mask[-1, :])))
+        or bool(_ensure_numpy(xp.any(mask[:, 0])))
+        or bool(_ensure_numpy(xp.any(mask[:, -1])))
     ):
         return True
     return False
@@ -179,7 +187,7 @@ def delete_small_segments(
 
     labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
     if num_labels == 0:
-        return binary_mask
+        return _ensure_numpy(binary_mask)
 
     counts = xp.bincount(xp.array(labeled).ravel())
     remove_labels = xp.where((counts <= interval[0]) | (counts > interval[1]))[0]
@@ -228,7 +236,7 @@ def delete_segments_disconnected_from_point(
 
     labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
     if num_labels == 0:
-        return binary_mask
+        return _ensure_numpy(binary_mask)
 
     target_point_idx = tuple(int(coord) for coord in target_point)
     label_at_point = labeled[target_point_idx]
@@ -237,16 +245,16 @@ def delete_segments_disconnected_from_point(
             print(
                 "[delete_segments_disconnected_from_point] Target point is not in any segment."
             )
-        return xp.zeros_like(binary_mask)
+        return _ensure_numpy(xp.zeros_like(binary_mask))
 
     keep_mask = labeled == label_at_point
     component_size = xp.count_nonzero(xp.array(keep_mask))
-    if component_size < size_threshold:
+    if bool(_ensure_numpy(component_size < size_threshold)):
         if verbose:
             print(
                 f"[delete_segments_disconnected_from_point] Component size {component_size} < {size_threshold}."
             )
-        return xp.zeros_like(binary_mask)
+        return _ensure_numpy(xp.zeros_like(binary_mask))
 
     binary_mask = keep_mask.astype(binary_mask.dtype)
 
@@ -284,12 +292,14 @@ def delete_segments_disconnected_from_parent(
         binary_mask = cp.array(binary_mask)
         parent_mask = cp.array(parent_mask)
 
-    if not xp.any(binary_mask) or not xp.any(parent_mask):
-        return xp.zeros_like(binary_mask)
+    if not bool(_ensure_numpy(xp.any(binary_mask))) or not bool(
+        _ensure_numpy(xp.any(parent_mask))
+    ):
+        return _ensure_numpy(xp.zeros_like(binary_mask))
 
     labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
     if num_labels == 0:
-        return binary_mask
+        return _ensure_numpy(binary_mask)
 
     intersections = scipy_sum(
         parent_mask, labels=labeled, index=np.arange(1, num_labels + 1), use_gpu=use_gpu
@@ -363,7 +373,7 @@ def delete_segments_distant_from_point(
 
     labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
     if num_labels == 0:
-        return binary_mask
+        return _ensure_numpy(binary_mask)
 
     min_dists = scipy_minimum(
         dt, labels=labeled, index=xp.arange(1, num_labels + 1), use_gpu=use_gpu
@@ -432,11 +442,11 @@ def delete_nearby_segments_with_buffer(
         binary_mask = cp.array(binary_mask)
         parent_mask = cp.array(parent_mask)
 
-    if not xp.any(binary_mask):
-        return binary_mask
+    if not bool(_ensure_numpy(xp.any(binary_mask))):
+        return _ensure_numpy(binary_mask)
 
-    if not xp.any(parent_mask):
-        return binary_mask
+    if not bool(_ensure_numpy(xp.any(parent_mask))):
+        return _ensure_numpy(binary_mask)
 
     connected_components, num_components = scipy_label(
         xp.array(binary_mask), use_gpu=use_gpu
@@ -453,14 +463,16 @@ def delete_nearby_segments_with_buffer(
 
         buffered_mask = expand_labels(component_mask, distance_threshold)
 
-        if xp.sum(xp.array(buffered_mask) * xp.array(parent_mask)) > 0:
+        if bool(
+            _ensure_numpy(xp.sum(xp.array(buffered_mask) * xp.array(parent_mask)) > 0)
+        ):
             binary_mask[component_mask] = 0
             if verbose:
                 print(
                     f"\t\tDeleting component {component_idx} due to proximity to parent component."
                 )
             continue
-        if component_size < size_threshold:
+        if bool(_ensure_numpy(component_size < size_threshold)):
             binary_mask[component_mask] = 0
             if verbose:
                 print(
@@ -503,7 +515,7 @@ def delete_touching_border_segments(
 
     labeled, num_labels = scipy_label(binary_mask, use_gpu=use_gpu)
     if num_labels == 0:
-        return binary_mask
+        return _ensure_numpy(binary_mask)
 
     for lbl in range(1, num_labels + 1):
         comp_mask = labeled == lbl
@@ -513,7 +525,9 @@ def delete_touching_border_segments(
             else if_touches_border_2d(comp_mask, use_gpu)
         )
         comp_size = xp.count_nonzero(xp.array(comp_mask))
-        if touches_border and (size_threshold == -1 or comp_size < size_threshold):
+        if touches_border and bool(
+            size_threshold == -1 or _ensure_numpy(comp_size < size_threshold)
+        ):
             binary_mask[xp.array(comp_mask)] = 0
             if verbose:
                 print(
@@ -550,9 +564,16 @@ def fill_holes_2d(
         binary_mask = cp.array(binary_mask)
 
     holes_labeled, num_labels = scipy_label(~xp.array(binary_mask), use_gpu=use_gpu)
-    counts = xp.bincount(xp.array(holes_labeled).ravel())
-    remove_labels = xp.where(counts <= max_hole_size)[0]
-    binary_mask[xp.isin(xp.array(holes_labeled), remove_labels)] = 1
+    fill_labels = []
+    for label in range(1, num_labels + 1):
+        hole_mask = holes_labeled == label
+        if np.count_nonzero(hole_mask) <= max_hole_size and not if_touches_border_2d(
+            hole_mask, use_gpu=False
+        ):
+            fill_labels.append(label)
+
+    if fill_labels:
+        binary_mask[xp.isin(xp.array(holes_labeled), xp.array(fill_labels))] = 1
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()
@@ -584,9 +605,16 @@ def fill_holes_3d(
         binary_mask = cp.array(binary_mask)
 
     holes_labeled, num_labels = scipy_label(~binary_mask, use_gpu=use_gpu)
-    counts = xp.bincount(xp.array(holes_labeled).ravel())
-    remove_labels = xp.where(counts <= max_hole_size)[0]
-    binary_mask[xp.isin(xp.array(holes_labeled), remove_labels)] = 1
+    fill_labels = []
+    for label in range(1, num_labels + 1):
+        hole_mask = holes_labeled == label
+        if np.count_nonzero(hole_mask) <= max_hole_size and not if_touches_border_3d(
+            hole_mask, use_gpu=False
+        ):
+            fill_labels.append(label)
+
+    if fill_labels:
+        binary_mask[xp.isin(xp.array(holes_labeled), xp.array(fill_labels))] = 1
 
     if not isinstance(binary_mask, np.ndarray):
         binary_mask = binary_mask.get()

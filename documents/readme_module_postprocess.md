@@ -47,7 +47,7 @@ Removes segments that either do not intersect with the parent mask or are smalle
 
 ---
 
-### 8. `delete_segments_distant_from_point(binary_mask: np.ndarray, target_point: list, distance_threshold: int = 5, size_threshold: int = 10, keep_large: bool = True, use_gpu: bool = True, verbose: bool = True) -> np.ndarray`
+### 8. `delete_segments_distant_from_point(binary_mask: np.ndarray, target_point: list, distance_threshold: int = 5, size_threshold: int = 10, keep_large: bool = True, large_threshold: int = 100000, use_gpu: bool = True, verbose: bool = True) -> np.ndarray`
 Removes segments that are too far from the specified point, except for those that are large enough.
 - **Returns**: The updated binary mask.
 
@@ -66,20 +66,20 @@ Removes segments that touch the image boundary and are smaller than a specified 
 ---
 
 ### 11. `fill_holes_2d(binary_mask: np.ndarray, max_hole_size: int = 100, use_gpu: bool = True) -> np.ndarray`
-Fills small holes in a 2D binary mask.
+Fills small internal holes in a 2D binary mask. Background components touching the image border are left unchanged.
 - **Returns**: The 2D mask with filled holes.
 
 ---
 
 ### 12. `fill_holes_3d(binary_mask: np.ndarray, max_hole_size: int = 100, use_gpu: bool = True) -> np.ndarray`
-Fills small holes in a 3D binary mask.
+Fills small internal holes in a 3D binary mask. Background components touching the image border are left unchanged.
 - **Returns**: The 3D mask with filled holes.
 
 ## Usage Example
 
 ```python
 import numpy as np
-from optimed.postprocess import (
+from optimed.processes.postprocess import (
     delete_small_segments,
     delete_segments_distant_from_point,
     fill_holes_3d

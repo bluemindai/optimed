@@ -170,6 +170,13 @@ class TestPostprocessFunctions(unittest.TestCase):
         result = fill_holes_2d(mask, max_hole_size=3, use_gpu=False)
         np.testing.assert_array_equal(result, expected)
 
+    def test_fill_holes_2d_does_not_fill_border_background(self):
+        mask = np.ones((5, 5), dtype=bool)
+        mask[0, 0] = False
+
+        result = fill_holes_2d(mask, max_hole_size=3, use_gpu=False)
+        np.testing.assert_array_equal(result, mask)
+
     def test_fill_holes_3d(self):
         # 3D маска с дыркой
         mask = np.zeros((3, 3, 3), dtype=bool)
@@ -184,6 +191,13 @@ class TestPostprocessFunctions(unittest.TestCase):
         # Заполняем дырки размером до 2
         result = fill_holes_3d(mask, max_hole_size=2, use_gpu=False)
         np.testing.assert_array_equal(result, expected)
+
+    def test_fill_holes_3d_does_not_fill_border_background(self):
+        mask = np.ones((5, 5, 5), dtype=bool)
+        mask[0, 0, 0] = False
+
+        result = fill_holes_3d(mask, max_hole_size=3, use_gpu=False)
+        np.testing.assert_array_equal(result, mask)
 
 
 if __name__ == "__main__":
