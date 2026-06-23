@@ -1,4 +1,6 @@
 .PHONY: all
+UV ?= uv
+
 all: pre-commit test
 .PHONY: pre-commit
 pre-commit:
@@ -17,11 +19,11 @@ clean:
 
 .PHONY: build
 build: clean
-	python3 -m build
+	$(UV) run --no-project --with build python -m build
 
 .PHONY: push
 push:
-	python3 -m twine upload dist/*
+	$(UV) run --no-project --with twine python -m twine upload dist/*
 
 .PHONY: open-html
 open-html:
